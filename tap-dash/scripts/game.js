@@ -293,7 +293,7 @@ class Game {
                 console.error('Restart button not found!');
             }
             
-            // Add keyboard controls with simplified logic
+            // MODIFIED: Enhanced keyboard controls for movement
             document.addEventListener('keydown', (e) => {
                 if (e.code === 'Space') {
                     console.log('Space pressed');
@@ -304,7 +304,79 @@ class Game {
                     }
                     e.preventDefault(); // Prevent scrolling
                 }
+                
+                // Add left/right movement with arrow keys and A/D
+                if (this.isRunning && this.player) {
+                    if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+                        this.player.moveLeft(true);
+                    }
+                    if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+                        this.player.moveRight(true);
+                    }
+                }
             });
+            
+            // Add key up event for smoother controls
+            document.addEventListener('keyup', (e) => {
+                if (this.isRunning && this.player) {
+                    if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+                        this.player.moveLeft(false);
+                    }
+                    if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+                        this.player.moveRight(false);
+                    }
+                }
+            });
+            
+            // MODIFIED: Add touch swipe controls for mobile
+            let touchStartX = 0;
+            let touchStartTime = 0;
+            
+            document.addEventListener('touchstart', (e) => {
+                if (this.isRunning && e.touches.length > 0) {
+                    touchStartX = e.touches[0].clientX;
+                    touchStartTime = Date.now();
+                }
+            }, { passive: true });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (!this.isRunning || !this.player || e.touches.length === 0) return;
+                
+                const touchCurrentX = e.touches[0].clientX;
+                const deltaX = touchCurrentX - touchStartX;
+                
+                // Reset start position for continuous movement
+                if (Math.abs(deltaX) > 30) {
+                    touchStartX = touchCurrentX;
+                }
+                
+                // Move based on swipe direction
+                if (deltaX < -20) {
+                    this.player.moveLeft(true);
+                    this.player.moveRight(false);
+                } else if (deltaX > 20) {
+                    this.player.moveRight(true);
+                    this.player.moveLeft(false);
+                } else {
+                    this.player.moveLeft(false);
+                    this.player.moveRight(false);
+                }
+            }, { passive: true });
+            
+            document.addEventListener('touchend', (e) => {
+                if (this.isRunning && this.player) {
+                    // Stop movement on touch end
+                    this.player.moveLeft(false);
+                    this.player.moveRight(false);
+                    
+                    // Check if it was a quick tap for jumping
+                    const touchDuration = Date.now() - touchStartTime;
+                    if (touchDuration < 200) {
+                        // It was a quick tap, so jump
+                        this.handleTap();
+                    }
+                }
+            }, { passive: true });
             
             // Add a direct click handler to the start screen
             const startScreen = document.getElementById('start-screen');
@@ -414,7 +486,7 @@ class Game {
                         countdownEl.textContent = count;
                         // Update instruction text
                         if (count === 2) {
-                            instructionEl.textContent = 'Tap to Jump!';
+                            instructionEl.textContent = 'Tap to Jump! Use A/D or ←/→ to Move!';
                         } else if (count === 1) {
                             instructionEl.textContent = 'Double-Tap for Double Jump!';
                         }
@@ -427,6 +499,9 @@ class Game {
                         this.isRunning = true;
                         console.log('Game is now running:', this.isRunning);
                         
+                        // ADDED: Start continuous trail effect
+                        this.trailSystem.startContinuousTrail(this.player);
+                        
                         // Play a "go" effect
                         this.playStartEffect();
                     }
@@ -434,19 +509,29 @@ class Game {
             } else {
                 console.error('UI layer not found!');
                 this.isRunning = true;
+                
+                // ADDED: Start continuous trail effect
+                this.trailSystem.startContinuousTrail(this.player);
             }
         } catch (error) {
             console.error('Error starting game:', error);
             // Fallback - just start the game
             this.isRunning = true;
+            
+            // ADDED: Start continuous trail effect even in fallback mode
+            this.trailSystem.startContinuousTrail(this.player);
         }
     }
     
+    // MODIFIED: Fixed game over and restart logic
     gameOver() {
         console.log('Game over');
         this.isRunning = false;
         
         try {
+            // ADDED: Stop continuous trail on game over
+            this.trailSystem.stopContinuousTrail();
+            
             const finalScoreElement = document.getElementById('final-score');
             if (finalScoreElement) {
                 finalScoreElement.textContent = Math.floor(this.score);
@@ -455,6 +540,8 @@ class Game {
             const gameOverElement = document.getElementById('game-over');
             if (gameOverElement) {
                 gameOverElement.classList.remove('hidden');
+                // ADDED: Also set display style directly for extra reliability
+                gameOverElement.style.display = 'flex';
             } else {
                 console.error('Game over element not found!');
             }
@@ -470,9 +557,20 @@ class Game {
         console.log('Restarting game');
         
         try {
+            // MODIFIED: Make sure game over screen is actually hidden
             const gameOverElement = document.getElementById('game-over');
             if (gameOverElement) {
+                // Force hide by setting display style directly, in case CSS class isn't working
                 gameOverElement.classList.add('hidden');
+                gameOverElement.style.display = 'none';
+            } else {
+                console.error('Game over element not found!');
+            }
+            
+            // Reset high score message
+            const highScoreMessage = document.getElementById('high-score-message');
+            if (highScoreMessage) {
+                highScoreMessage.classList.add('hidden');
             }
             
             // Reset game objects
@@ -484,9 +582,16 @@ class Game {
             this.score = 0;
             updateScoreDisplay(this.score);
             
-            // Start game
-            this.isRunning = true;
-            console.log('Game restarted and running');
+            // Add a short delay before starting game to ensure UI is updated
+            setTimeout(() => {
+                // Start game
+                this.isRunning = true;
+                
+                // Restart the continuous trail system
+                this.trailSystem.startContinuousTrail(this.player);
+                
+                console.log('Game restarted and running');
+            }, 100);
         } catch (error) {
             console.error('Error restarting game:', error);
         }
@@ -564,18 +669,28 @@ class Game {
     
     updateCamera() {
         try {
-            // Add subtle camera movements based on player state
-            if (this.player.isJumping) {
-                // Camera follows player's y position a bit when jumping
-                const targetY = 2.5 + this.player.position.y * 0.1;
-                this.camera.position.y += (targetY - this.camera.position.y) * 0.1;
+            // MODIFIED: Improved camera that follows player's horizontal movement too
+            if (this.player) {
+                // Add subtle camera movements based on player state
+                if (this.player.isJumping) {
+                    // Camera follows player's y position a bit when jumping
+                    const targetY = 2.5 + this.player.position.y * 0.1;
+                    this.camera.position.y += (targetY - this.camera.position.y) * 0.1;
+                } else {
+                    // Subtle camera shake during normal gameplay
+                    this.camera.position.y = 2.5 + Math.sin(Date.now() * 0.001) * 0.05;
+                }
+                
+                // MODIFIED: Camera follows player's x position for better side movement visibility
+                const targetX = this.player.position.x * 0.3; // Scale down to make it subtle
+                this.camera.position.x += (targetX - this.camera.position.x) * 0.05;
+                
+                // Keep the camera looking at a point ahead of the player
+                this.camera.lookAt(this.player.position.x * 0.2, 1, -5);
             } else {
-                // Subtle camera shake during normal gameplay
-                this.camera.position.y = 2.5 + Math.sin(Date.now() * 0.001) * 0.05;
+                // Subtle horizontal movement if player is not available
+                this.camera.position.x = Math.sin(Date.now() * 0.0005) * 0.2;
             }
-            
-            // Subtle horizontal movement
-            this.camera.position.x = Math.sin(Date.now() * 0.0005) * 0.2;
         } catch (error) {
             console.error('Error updating camera:', error);
         }

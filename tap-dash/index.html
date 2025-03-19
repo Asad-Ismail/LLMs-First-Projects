@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tap Dash</title>
+    <title>Tap Dodge</title>
     <link rel="stylesheet" href="styles/main.css">
     
     <!-- Improved Three.js loading -->
@@ -257,13 +257,27 @@
             <div id="high-score">Best: 0</div>
             <div id="controls-hint">Tap or Press Space to Jump!</div>
             
+            <!-- Updated start screen with beautiful effects -->
             <div id="start-screen" class="overlay">
-                <h1>Tap Dash</h1>
-                <p>Tap anywhere to jump!</p>
-                <p class="instructions">Leave colorful trails and dodge obstacles!</p>
-                <p class="instructions">Collect golden orbs for bonus points!</p>
-                <p class="instructions">Now with double-jump! Tap again while in the air!</p>
-                <button id="start-button">Start Game</button>
+                <div class="stars-container">
+                    <div class="stars"></div>
+                    <div class="stars"></div>
+                    <div class="stars"></div>
+                </div>
+                
+                <div class="logo-container">
+                    <h1 class="game-title">Tap<span class="title-accent">Dodge</span></h1>
+                    <div class="glowing-orb"></div>
+                </div>
+                
+                <div class="tagline">Tap • Jump • Dodge</div>
+                
+                <button id="start-button" class="pulse-button">
+                    <span class="button-text">PLAY</span>
+                    <span class="button-shine"></span>
+                </button>
+                
+                <div class="sparkles"></div>
             </div>
             
             <div id="game-over" class="overlay hidden">
@@ -278,6 +292,9 @@
     <script>
         // Direct onclick handler for start button (fallback)
         document.addEventListener('DOMContentLoaded', function() {
+            // Create dynamic sparkles
+            createSparkles();
+            
             document.getElementById('start-button').addEventListener('click', function(e) {
                 console.log("Start button clicked directly");
                 
@@ -299,6 +316,46 @@
                 e.stopPropagation(); // Prevent event from bubbling
             });
         });
+        
+        // Function to create dynamic sparkles
+        function createSparkles() {
+            const sparklesContainer = document.querySelector('.sparkles');
+            if (!sparklesContainer) return;
+            
+            // Create 15 random sparkle elements
+            for (let i = 0; i < 15; i++) {
+                const sparkle = document.createElement('div');
+                sparkle.className = 'sparkle-particle';
+                
+                // Random positioning
+                const top = Math.random() * 100;
+                const left = Math.random() * 100;
+                
+                // Random size
+                const size = Math.random() * 4 + 2;
+                
+                // Random animation delay
+                const delay = Math.random() * 5;
+                const duration = Math.random() * 3 + 3;
+                
+                // Apply styles
+                sparkle.style.cssText = `
+                    position: absolute;
+                    top: ${top}%;
+                    left: ${left}%;
+                    width: ${size}px;
+                    height: ${size}px;
+                    background-color: #fff;
+                    border-radius: 50%;
+                    box-shadow: 0 0 ${size + 5}px ${size}px rgba(165, 247, 255, 0.8);
+                    opacity: 0;
+                    animation: sparkle ${duration}s linear infinite;
+                    animation-delay: ${delay}s;
+                `;
+                
+                sparklesContainer.appendChild(sparkle);
+            }
+        }
     </script>
 </body>
 </html>

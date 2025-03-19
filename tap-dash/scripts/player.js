@@ -13,6 +13,12 @@ class Player {
         this.doubleJumpAvailable = false;
         this.trailColors = [];
         
+        // Added: Horizontal movement controls
+        this.maxHorizontalSpeed = 0.15;
+        this.horizontalAcceleration = 0.01;
+        this.movingLeft = false;
+        this.movingRight = false;
+        
         // Create the player mesh with improved looks
         this.createPlayerMesh();
         
@@ -312,6 +318,15 @@ class Player {
         }
     }
     
+    // Added: New methods for horizontal movement
+    moveLeft(isMoving) {
+        this.movingLeft = isMoving;
+    }
+    
+    moveRight(isMoving) {
+        this.movingRight = isMoving;
+    }
+    
     update() {
         try {
             // More refined gravity and physics
@@ -330,18 +345,35 @@ class Player {
             // Update position
             this.position.y += this.velocity.y;
             
-            // Add slight horizontal movement for more dynamic feel
-            if (this.isJumping) {
-                // Slight horizontal drift based on velocity
-                this.position.x += this.velocity.y * 0.02;
-                
-                // Keep player within bounds
-                if (Math.abs(this.position.x) > 2) {
-                    this.position.x = Math.sign(this.position.x) * 2;
-                }
+            // MODIFIED: Improved horizontal movement with user control
+            // Apply horizontal acceleration based on input
+            if (this.movingLeft) {
+                this.velocity.x -= this.horizontalAcceleration;
+            } else if (this.movingRight) {
+                this.velocity.x += this.horizontalAcceleration;
             } else {
-                // Return to center when on ground
-                this.position.x *= 0.95;
+                // Slow down if no input
+                this.velocity.x *= 0.9;
+            }
+            
+            // Cap horizontal speed
+            if (this.velocity.x > this.maxHorizontalSpeed) {
+                this.velocity.x = this.maxHorizontalSpeed;
+            } else if (this.velocity.x < -this.maxHorizontalSpeed) {
+                this.velocity.x = -this.maxHorizontalSpeed;
+            }
+            
+            // Update horizontal position
+            this.position.x += this.velocity.x;
+            
+            // Keep player within bounds
+            const boundaryLimit = 2.5;
+            if (this.position.x > boundaryLimit) {
+                this.position.x = boundaryLimit;
+                this.velocity.x = 0;
+            } else if (this.position.x < -boundaryLimit) {
+                this.position.x = -boundaryLimit;
+                this.velocity.x = 0;
             }
             
             // Ground collision
@@ -375,6 +407,9 @@ class Player {
                 // More dramatic tilt when jumping
                 this.mesh.rotation.x = this.velocity.y * 0.2;
                 
+                // Add slight tilt based on horizontal velocity for better feedback
+                this.mesh.rotation.z = -this.velocity.x * 0.5;
+                
                 // Change color based on jump state
                 if (this.mesh.material && this.mesh.material.emissive) {
                     if (this.doubleJumpAvailable) {
@@ -397,6 +432,9 @@ class Player {
             } else {
                 // Reset rotation when on ground
                 this.mesh.rotation.x *= 0.9;
+                
+                // Add tilt based on horizontal velocity for better feedback
+                this.mesh.rotation.z = -this.velocity.x * 0.5;
                 
                 // Restore normal color
                 if (this.mesh.material && this.mesh.material.emissive) {
@@ -425,6 +463,13 @@ class Player {
                 // Normal when on ground or at peak of jump
                 this.mesh.scale.set(baseScale, baseScale, baseScale);
             }
+            
+            // Add slight stretching effect when moving horizontally
+            if (Math.abs(this.velocity.x) > 0.03) {
+                const stretchFactor = 0.15 * Math.abs(this.velocity.x) / this.maxHorizontalSpeed;
+                this.mesh.scale.x += stretchFactor * Math.sign(-this.velocity.x);
+                this.mesh.scale.z += stretchFactor * 0.5;
+            }
         } catch(error) {
             console.error("Error in player update:", error);
         }
@@ -435,6 +480,8 @@ class Player {
         this.velocity = { x: 0, y: 0, z: 0 };
         this.isJumping = false;
         this.doubleJumpAvailable = false;
+        this.movingLeft = false;
+        this.movingRight = false;
         try {
             this.mesh.position.set(this.position.x, this.position.y, this.position.z);
             this.mesh.rotation.set(0, 0, 0);
