@@ -19,11 +19,14 @@ class ObstacleManager {
             const obstacleType = Math.floor(Math.random() * 4);
             let mesh, width, height, depth;
             
-            // Random base color with variation
+            // MODIFIED: More vibrant color palette
             const hue = Math.random();
-            const saturation = 0.7 + Math.random() * 0.3;
-            const lightness = 0.4 + Math.random() * 0.3;
+            const saturation = 0.8 + Math.random() * 0.2; // Higher saturation
+            const lightness = 0.5 + Math.random() * 0.3; // Brighter colors
             const color = new THREE.Color().setHSL(hue, saturation, lightness);
+            
+            // MODIFIED: Add lateral variation to obstacle positions
+            const lateralPosition = (Math.random() - 0.5) * 3;
             
             switch(obstacleType) {
                 case 0: // Standard block
@@ -34,8 +37,8 @@ class ObstacleManager {
                     const boxGeometry = new THREE.BoxGeometry(width, height, depth);
                     const boxMaterial = new THREE.MeshPhongMaterial({ 
                         color: color,
-                        shininess: 50,
-                        emissive: color.clone().multiplyScalar(0.2)
+                        shininess: 80, // Increased shininess
+                        emissive: color.clone().multiplyScalar(0.3) // More glow
                     });
                     mesh = new THREE.Mesh(boxGeometry, boxMaterial);
                     break;
@@ -47,8 +50,8 @@ class ObstacleManager {
                     const cylinderGeometry = new THREE.CylinderGeometry(radius, radius, height, 16);
                     const cylinderMaterial = new THREE.MeshPhongMaterial({ 
                         color: color,
-                        shininess: 60,
-                        emissive: color.clone().multiplyScalar(0.2)
+                        shininess: 90,
+                        emissive: color.clone().multiplyScalar(0.3)
                     });
                     mesh = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
                     
@@ -62,13 +65,14 @@ class ObstacleManager {
                     const sphereGeometry = new THREE.SphereGeometry(sphereRadius, 24, 24);
                     const sphereMaterial = new THREE.MeshPhongMaterial({ 
                         color: color,
-                        shininess: 80,
-                        emissive: color.clone().multiplyScalar(0.3)
+                        shininess: 100,
+                        emissive: color.clone().multiplyScalar(0.4)
                     });
                     mesh = new THREE.Mesh(sphereGeometry, sphereMaterial);
                     
                     // Position sphere off the ground
-                    height = 0.5 + Math.random() * 1.5;
+                    // MODIFIED: Ensure floating spheres are at jumpable heights
+                    height = 0.8 + Math.random(); // Reduced max height to make it easier to jump over
                     width = sphereRadius * 2;
                     depth = sphereRadius * 2;
                     break;
@@ -96,13 +100,17 @@ class ObstacleManager {
                     break;
             }
             
-            // Add glow light to the obstacle
-            const light = new THREE.PointLight(color, 0.7, 3);
+            // Add stronger glow light to the obstacle
+            const light = new THREE.PointLight(color, 1.2, 4); // Brighter, longer range
             light.position.set(0, height / 2, 0);
             mesh.add(light);
             
-            // Position at spawn distance
-            mesh.position.set(0, height / 2, -this.spawnDistance);
+            // MODIFIED: Position at spawn distance with lateral variation
+            mesh.position.set(
+                lateralPosition, 
+                height / 2, 
+                -this.spawnDistance
+            );
             
             // Add randomized rotation
             mesh.rotation.y = Math.random() * Math.PI * 0.2;
@@ -120,23 +128,24 @@ class ObstacleManager {
         }
     }
     
+    
     update() {
         try {
-            // Spawn new obstacles at interval
+            // MODIFIED: Spawn new obstacles at interval with more randomness
             this.frameCount++;
             if (this.frameCount >= this.spawnInterval) {
                 this.spawnObstacle();
                 this.frameCount = 0;
                 
-                // Randomize next spawn interval
-                this.spawnInterval = Math.floor(Math.random() * (this.maxGap - this.minGap) + this.minGap) * 60;
+                // MODIFIED: More varied spawn intervals
+                this.spawnInterval = Math.floor(Math.random() * (this.maxGap - this.minGap) + this.minGap) * 50;
                 
                 // Sometimes spawn a sequence of obstacles
-                if (Math.random() < 0.3) {
+                if (Math.random() < 0.2) { // Reduced chance from 0.3 to 0.2
                     // Schedule additional obstacles for an obstacle "pattern"
-                    setTimeout(() => this.spawnObstacle(), 300);
-                    if (Math.random() < 0.5) {
-                        setTimeout(() => this.spawnObstacle(), 600);
+                    setTimeout(() => this.spawnObstacle(), 400);
+                    if (Math.random() < 0.3) { // Reduced chance from 0.5 to 0.3
+                        setTimeout(() => this.spawnObstacle(), 800);
                     }
                 }
             }
@@ -161,11 +170,19 @@ class ObstacleManager {
                     obstacle.mesh.position.y += Math.sin(Date.now() * 0.003 + i) * 0.01;
                 }
                 
-                // Scale effect as obstacles approach (feeling of speed)
+                // MODIFIED: Improved visual cues for approaching obstacles
                 const distanceToPlayer = obstacle.mesh.position.z;
-                if (distanceToPlayer > 0 && distanceToPlayer < 2) {
-                    const scaleFactor = 1 + (1 - distanceToPlayer / 2) * 0.1;
-                    obstacle.mesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                if (distanceToPlayer > -2 && distanceToPlayer < 2) {
+                    // Slightly highlight obstacles as they get closer
+                    if (obstacle.mesh.material && obstacle.mesh.material.emissive) {
+                        const intensity = 0.3 + (1 - Math.abs(distanceToPlayer) / 2) * 0.7;
+                        obstacle.mesh.material.emissive.multiplyScalar(intensity);
+                    }
+                    
+                    // Adjust light intensity for better visual cues
+                    if (obstacle.light) {
+                        obstacle.light.intensity = 1 + (1 - Math.abs(distanceToPlayer) / 2);
+                    }
                 }
                 
                 // Remove obstacles that have passed the player
@@ -178,6 +195,7 @@ class ObstacleManager {
             console.error('Error updating obstacles:', error);
         }
     }
+    
     
     // Get obstacle positions for collision detection
     getObstacles() {

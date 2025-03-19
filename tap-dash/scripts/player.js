@@ -20,9 +20,64 @@ class Player {
         this.addGlow();
     }
     
+
+    addContinuousParticleTrail() {
+        try {
+            // Create a continuous stream of particles behind the player
+            setInterval(() => {
+                if (!this.isJumping) return; // Only show particles when jumping
+                
+                // Create a particle
+                const particle = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.03 + Math.random() * 0.03, 8, 8),
+                    new THREE.MeshBasicMaterial({
+                        color: new THREE.Color().setHSL(Math.random(), 0.9, 0.6),
+                        transparent: true,
+                        opacity: 0.7
+                    })
+                );
+                
+                // Position slightly behind player
+                particle.position.set(
+                    this.position.x + (Math.random() - 0.5) * 0.1,
+                    this.position.y - 0.1,
+                    this.position.z + 0.1
+                );
+                
+                this.scene.add(particle);
+                
+                // Animate the particle
+                let lifetime = 0;
+                const maxLife = 20;
+                
+                const animateParticle = () => {
+                    lifetime++;
+                    
+                    if (lifetime < maxLife) {
+                        // Drift slightly
+                        particle.position.x += (Math.random() - 0.5) * 0.01;
+                        particle.position.y += (Math.random() - 0.5) * 0.01;
+                        particle.position.z += 0.02; // Move backward relative to player
+                        
+                        // Fade out
+                        particle.material.opacity = 0.7 * (1 - lifetime / maxLife);
+                        
+                        requestAnimationFrame(animateParticle);
+                    } else {
+                        this.scene.remove(particle);
+                    }
+                };
+                
+                animateParticle();
+            }, 50); // Create particles at regular intervals
+        } catch (error) {
+            console.error("Error creating continuous particle trail:", error);
+        }
+    }
+
     createPlayerMesh() {
         try {
-            // Create a more interesting player model with a core sphere and outer shell
+            // MODIFIED: Create a more vibrant and interesting player model
             
             // Core sphere (inner glow)
             const coreGeometry = new THREE.SphereGeometry(this.size.x * 0.6, 16, 16);
@@ -32,6 +87,16 @@ class Player {
                 opacity: 0.9
             });
             this.core = new THREE.Mesh(coreGeometry, coreMaterial);
+            
+            // Middle layer with pulsing effect
+            const middleGeometry = new THREE.SphereGeometry(this.size.x * 0.8, 20, 20);
+            const middleMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x44aaff,
+                transparent: true,
+                opacity: 0.6,
+                shininess: 100
+            });
+            this.middleLayer = new THREE.Mesh(middleGeometry, middleMaterial);
             
             // Outer shell (semi-transparent)
             const shellGeometry = new THREE.SphereGeometry(this.size.x, 20, 20);
@@ -45,15 +110,16 @@ class Player {
             });
             this.mesh = new THREE.Mesh(shellGeometry, shellMaterial);
             
-            // Add core to the main mesh
+            // Add core and middle layer to the main mesh
             this.mesh.add(this.core);
+            this.mesh.add(this.middleLayer);
             
             // Position the complete player
             this.mesh.position.set(this.position.x, this.position.y, this.position.z);
             this.scene.add(this.mesh);
             
-            // Add particle trail for continuous movement
-            this.addParticleTrail();
+            // MODIFIED: Add continuous particle trail
+            this.addContinuousParticleTrail();
         } catch(error) {
             console.error("Error creating player mesh:", error);
             // Create a fallback simple player if error occurs
@@ -167,6 +233,8 @@ class Player {
     }
     
     jump() {
+        console.log('Jump attempt - isJumping:', this.isJumping, 'doubleJumpAvailable:', this.doubleJumpAvailable);
+        
         if (!this.isJumping) {
             // First jump
             this.velocity.y = this.jumpForce;
@@ -175,14 +243,15 @@ class Player {
             this.playJumpEffect();
             return true;
         } else if (this.doubleJumpAvailable) {
-            // Double jump
-            this.velocity.y = this.jumpForce * 0.8;
+            // Double jump - slightly stronger for better gameplay
+            this.velocity.y = this.jumpForce * 0.9; // Increased from 0.8
             this.doubleJumpAvailable = false;
             this.playJumpEffect();
             return true;
         }
         return false; // Can't jump
     }
+    
     
     playJumpEffect() {
         try {
@@ -245,11 +314,35 @@ class Player {
     
     update() {
         try {
-            // Apply gravity
-            this.velocity.y -= this.gravity;
+            // More refined gravity and physics
+            // Apply gravity with slight easing for better feel
+            if (this.velocity.y > 0) {
+                this.velocity.y -= this.gravity * 0.9;
+            } else {
+                this.velocity.y -= this.gravity * 1.1;
+            }
+            
+            // Cap terminal velocity for better control
+            if (this.velocity.y < -0.5) {
+                this.velocity.y = -0.5;
+            }
             
             // Update position
             this.position.y += this.velocity.y;
+            
+            // Add slight horizontal movement for more dynamic feel
+            if (this.isJumping) {
+                // Slight horizontal drift based on velocity
+                this.position.x += this.velocity.y * 0.02;
+                
+                // Keep player within bounds
+                if (Math.abs(this.position.x) > 2) {
+                    this.position.x = Math.sign(this.position.x) * 2;
+                }
+            } else {
+                // Return to center when on ground
+                this.position.x *= 0.95;
+            }
             
             // Ground collision
             if (this.position.y <= this.size.y) {
@@ -266,25 +359,40 @@ class Player {
                 this.light.position.copy(this.mesh.position);
             }
             
-            // Animate pulse light
+            // Animate pulse light with more dramatic effect
             const time = Date.now() * 0.003;
             if (this.pulseLight) {
-                this.pulseLight.intensity = 0.3 + Math.sin(time) * 0.2;
+                this.pulseLight.intensity = 0.3 + Math.sin(time) * 0.3;
                 this.pulseLight.position.copy(this.mesh.position);
             }
             
-            // Subtle rotation for visual interest
-            this.mesh.rotation.y += 0.01;
-            this.mesh.rotation.z += 0.005;
+            // More dynamic rotation for visual interest
+            this.mesh.rotation.y += 0.02;
+            this.mesh.rotation.z += 0.01;
             
-            // Visual feedback during different states
+            // MODIFIED: Better visual feedback during different states
             if (this.isJumping) {
-                // Tilt slightly forward when jumping
-                this.mesh.rotation.x = this.velocity.y * 0.1;
+                // More dramatic tilt when jumping
+                this.mesh.rotation.x = this.velocity.y * 0.2;
                 
-                // Change color slightly during jump
+                // Change color based on jump state
                 if (this.mesh.material && this.mesh.material.emissive) {
-                    this.mesh.material.emissive.setHSL(0.6 + Math.sin(time) * 0.1, 0.7, 0.5);
+                    if (this.doubleJumpAvailable) {
+                        // First jump - blue hue
+                        this.mesh.material.emissive.setHSL(0.6, 0.7, 0.5);
+                    } else {
+                        // Double jump - purple hue
+                        this.mesh.material.emissive.setHSL(0.7, 0.9, 0.6);
+                    }
+                }
+                
+                // Pulse the middle layer
+                if (this.middleLayer) {
+                    this.middleLayer.scale.set(
+                        1 + Math.sin(time * 5) * 0.1,
+                        1 + Math.sin(time * 5) * 0.1,
+                        1 + Math.sin(time * 5) * 0.1
+                    );
                 }
             } else {
                 // Reset rotation when on ground
@@ -294,16 +402,25 @@ class Player {
                 if (this.mesh.material && this.mesh.material.emissive) {
                     this.mesh.material.emissive.setHSL(0.6, 0.5, 0.3);
                 }
+                
+                // Normal pulsing for middle layer
+                if (this.middleLayer) {
+                    this.middleLayer.scale.set(
+                        1 + Math.sin(time * 2) * 0.05,
+                        1 + Math.sin(time * 2) * 0.05,
+                        1 + Math.sin(time * 2) * 0.05
+                    );
+                }
             }
             
-            // Subtle squash and stretch
+            // More dramatic squash and stretch
             const baseScale = 1;
-            if (this.velocity.y > 0) {
+            if (this.velocity.y > 0.1) {
                 // Stretch when moving up
-                this.mesh.scale.set(baseScale * 0.9, baseScale * 1.1, baseScale * 0.9);
+                this.mesh.scale.set(baseScale * 0.85, baseScale * 1.15, baseScale * 0.85);
             } else if (this.velocity.y < -0.1) {
                 // Squash when falling
-                this.mesh.scale.set(baseScale * 1.1, baseScale * 0.9, baseScale * 1.1);
+                this.mesh.scale.set(baseScale * 1.15, baseScale * 0.85, baseScale * 1.15);
             } else {
                 // Normal when on ground or at peak of jump
                 this.mesh.scale.set(baseScale, baseScale, baseScale);

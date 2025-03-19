@@ -6,8 +6,11 @@ class Game {
         console.log('Game constructor called');
         this.isRunning = false;
         this.score = 0;
-        this.speedIncreaseInterval = 10; // Increase speed every 10 points
-        this.speedIncreaseAmount = 0.01;
+        
+        // MODIFIED: Better speed progression for more balanced difficulty
+        this.speedIncreaseInterval = 15; // Increased from 10 to 15
+        this.speedIncreaseAmount = 0.008; // Reduced from 0.01
+        this.initialGracePeriod = 3; // Seconds of grace period at start
         
         try {
             // Set up Three.js scene
@@ -339,7 +342,44 @@ class Game {
             console.error('Error handling tap:', error);
         }
     }
-    
+
+
+    playStartEffect() {
+        try {
+            // Flash screen with a "go" effect
+            const flash = document.createElement('div');
+            flash.style.position = 'absolute';
+            flash.style.top = '0';
+            flash.style.left = '0';
+            flash.style.width = '100%';
+            flash.style.height = '100%';
+            flash.style.backgroundColor = 'rgba(50, 255, 100, 0.3)';
+            flash.style.pointerEvents = 'none';
+            flash.style.zIndex = '100';
+            flash.style.display = 'flex';
+            flash.style.justifyContent = 'center';
+            flash.style.alignItems = 'center';
+            flash.style.fontSize = '80px';
+            flash.style.fontWeight = 'bold';
+            flash.style.color = '#fff';
+            flash.style.textShadow = '0 0 10px rgba(0,0,0,0.5)';
+            flash.textContent = 'GO!';
+            document.body.appendChild(flash);
+            
+            // Fade out and remove
+            setTimeout(() => {
+                flash.style.transition = 'all 0.5s';
+                flash.style.opacity = '0';
+                flash.style.transform = 'scale(1.5)';
+                setTimeout(() => {
+                    document.body.removeChild(flash);
+                }, 500);
+            }, 300);
+        } catch (error) {
+            console.error('Error playing start effect:', error);
+        }
+    }
+        
     startGame() {
         console.log('Starting game');
         
@@ -352,10 +392,7 @@ class Game {
                 console.error('Start screen element not found!');
             }
             
-            this.isRunning = true;
-            console.log('Game is now running:', this.isRunning);
-            
-            // Add a short countdown before starting
+            // MODIFIED: Add a more visible countdown and instructions
             const countdownEl = document.createElement('div');
             countdownEl.className = 'countdown';
             countdownEl.textContent = '3';
@@ -364,21 +401,44 @@ class Game {
             if (uiLayer) {
                 uiLayer.appendChild(countdownEl);
                 
+                // Show a helpful instruction during countdown
+                const instructionEl = document.createElement('div');
+                instructionEl.className = 'countdown-instruction';
+                instructionEl.textContent = 'Get Ready!';
+                uiLayer.appendChild(instructionEl);
+                
                 let count = 3;
                 const countdown = setInterval(() => {
                     count--;
                     if (count > 0) {
                         countdownEl.textContent = count;
+                        // Update instruction text
+                        if (count === 2) {
+                            instructionEl.textContent = 'Tap to Jump!';
+                        } else if (count === 1) {
+                            instructionEl.textContent = 'Double-Tap for Double Jump!';
+                        }
                     } else {
                         clearInterval(countdown);
                         uiLayer.removeChild(countdownEl);
+                        uiLayer.removeChild(instructionEl);
+                        
+                        // Actually start the game after countdown
+                        this.isRunning = true;
+                        console.log('Game is now running:', this.isRunning);
+                        
+                        // Play a "go" effect
+                        this.playStartEffect();
                     }
                 }, 1000);
             } else {
                 console.error('UI layer not found!');
+                this.isRunning = true;
             }
         } catch (error) {
             console.error('Error starting game:', error);
+            // Fallback - just start the game
+            this.isRunning = true;
         }
     }
     
@@ -447,8 +507,10 @@ class Game {
             // Add subtle camera movements for more dynamic feel
             this.updateCamera();
             
-            // Check for collisions
-            this.checkCollisions();
+            // MODIFIED: Only check collisions after a grace period (5 points)
+            if (this.score > 5) {
+                this.checkCollisions();
+            }
             
             // Increase score
             this.score += 0.1;
@@ -524,27 +586,48 @@ class Game {
             // Check for collisions with obstacles
             const obstacles = this.obstacleManager.getObstacles();
             for (const obstacle of obstacles) {
-                if (checkCollision(
-                    this.player.position, obstacle.position,
-                    this.player.size, obstacle.size
-                )) {
-                    this.playCollisionEffect(obstacle.position);
-                    this.gameOver();
-                    return;
+                // MODIFIED: Improved collision detection for better gameplay feel
+                // Only check collision if the obstacle is near enough to the player
+                if (Math.abs(obstacle.position.z - this.player.position.z) < 1.5) {
+                    if (checkCollision(
+                        this.player.position, obstacle.position,
+                        this.player.size, obstacle.size
+                    )) {
+                        console.log("Collision with obstacle detected at positions:", 
+                            this.player.position, obstacle.position);
+                        this.playCollisionEffect(obstacle.position);
+                        this.gameOver();
+                        return;
+                    }
                 }
             }
             
-            // Check for collisions with previous trails (only after first few seconds)
-            if (this.score > 5) {
+            // Only check trail collisions if score is high enough
+            // and use a tighter collision box for trails
+            if (this.score > 15) {  // Increased from 5 to 15
                 const trails = this.trailSystem.getTrails();
                 for (const trail of trails) {
-                    if (checkCollision(
-                        this.player.position, trail.position,
-                        this.player.size, trail.size
-                    )) {
-                        this.playCollisionEffect(trail.position);
-                        this.gameOver();
-                        return;
+                    // Only check collision if the trail is in front of the player
+                    if (trail.position.z > this.player.position.z - 0.5 && 
+                        trail.position.z < this.player.position.z + 1) {
+                        
+                        // Use a reduced collision size for trails (70% of original)
+                        const reducedSize = {
+                            x: trail.size.x * 0.7,
+                            y: trail.size.y * 0.7,
+                            z: trail.size.z * 0.7
+                        };
+                        
+                        if (checkCollision(
+                            this.player.position, trail.position,
+                            this.player.size, reducedSize
+                        )) {
+                            console.log("Collision with trail detected at positions:", 
+                                this.player.position, trail.position);
+                            this.playCollisionEffect(trail.position);
+                            this.gameOver();
+                            return;
+                        }
                     }
                 }
             }
@@ -552,7 +635,38 @@ class Game {
             console.error('Error checking collisions:', error);
         }
     }
-    
+
+    debugCollision(pos1, pos2, isColliding) {
+        // Create debug visualization spheres at collision points
+        const sphere1 = new THREE.Mesh(
+            new THREE.SphereGeometry(0.2, 8, 8),
+            new THREE.MeshBasicMaterial({
+                color: isColliding ? 0xff0000 : 0x00ff00,
+                wireframe: true
+            })
+        );
+        const sphere2 = new THREE.Mesh(
+            new THREE.SphereGeometry(0.2, 8, 8),
+            new THREE.MeshBasicMaterial({
+                color: isColliding ? 0xff0000 : 0x00ff00,
+                wireframe: true
+            })
+        );
+        
+        sphere1.position.set(pos1.x, pos1.y, pos1.z);
+        sphere2.position.set(pos2.x, pos2.y, pos2.z);
+        
+        this.scene.add(sphere1);
+        this.scene.add(sphere2);
+        
+        // Remove after 2 seconds
+        setTimeout(() => {
+            this.scene.remove(sphere1);
+            this.scene.remove(sphere2);
+        }, 2000);
+    }
+
+
     playCollisionEffect(position) {
         try {
             // Create explosion-like particles at collision point

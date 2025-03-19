@@ -11,48 +11,57 @@ class TrailSystem {
     
     createTrail(playerPosition) {
         try {
-            // Create a more interesting trail effect
-            const trailColor = getRandomColor();
+            // MODIFIED: Generate more vibrant trail colors
+            const hue = Math.random(); // Full spectrum of colors
+            const saturation = 0.9; // More saturated
+            const lightness = 0.6; // Brighter
+            const trailColor = new THREE.Color().setHSL(hue, saturation, lightness);
             
-            // Create a glowing trail with custom shape
+            // Create a more interesting trail effect with dynamic shapes
+            // MODIFIED: Larger, more dramatic trail shapes
             const shape = new THREE.Shape();
-            shape.moveTo(-0.3, 0);
-            shape.quadraticCurveTo(-0.2, 0.3, 0, 0.5);
-            shape.quadraticCurveTo(0.2, 0.3, 0.3, 0);
-            shape.quadraticCurveTo(0.2, -0.3, 0, -0.5);
-            shape.quadraticCurveTo(-0.2, -0.3, -0.3, 0);
+            shape.moveTo(-0.4, 0);
+            shape.quadraticCurveTo(-0.3, 0.4, 0, 0.7);
+            shape.quadraticCurveTo(0.3, 0.4, 0.4, 0);
+            shape.quadraticCurveTo(0.3, -0.4, 0, -0.7);
+            shape.quadraticCurveTo(-0.3, -0.4, -0.4, 0);
             
             const geometry = new THREE.ExtrudeGeometry(shape, {
                 steps: 1,
-                depth: 0.8,
-                bevelEnabled: false
+                depth: 1.2, // Deeper trails
+                bevelEnabled: true,
+                bevelThickness: 0.1,
+                bevelSize: 0.1,
+                bevelSegments: 3
             });
             
-            // Create a glowing material
+            // Create a more vibrant glowing material
             const material = new THREE.MeshPhongMaterial({ 
                 color: trailColor,
                 transparent: true,
-                opacity: 0.8,
-                emissive: new THREE.Color(trailColor),
-                emissiveIntensity: 0.5,
+                opacity: 0.85, // More opaque
+                emissive: trailColor,
+                emissiveIntensity: 0.8, // More glow
+                shininess: 100,
                 side: THREE.DoubleSide
             });
             
             const trail = new THREE.Mesh(geometry, material);
             
             // Position and rotate to face forward
+            // MODIFIED: Better trail positioning
             trail.position.set(
                 playerPosition.x,
-                playerPosition.y,
-                playerPosition.z - 0.5 // Slightly behind player
+                playerPosition.y - 0.1, // Slightly lower to show more clearly
+                playerPosition.z - 0.2 // Closer behind player
             );
             trail.rotation.y = Math.PI / 2;
             
             // Random rotation for variety
             trail.rotation.z = Math.random() * Math.PI * 2;
             
-            // Add a small point light inside the trail
-            const trailLight = new THREE.PointLight(trailColor, 0.5, 2);
+            // MODIFIED: Add a stronger point light inside the trail
+            const trailLight = new THREE.PointLight(trailColor, 1.2, 3);
             trailLight.position.copy(trail.position);
             this.scene.add(trailLight);
             
@@ -61,9 +70,12 @@ class TrailSystem {
             this.trails.push({
                 mesh: trail,
                 light: trailLight,
-                size: { x: 0.6, y: 0.6, z: 0.8 },
+                size: { x: 0.7, y: 0.7, z: 1.0 }, // Slightly larger collision size
                 creationTime: Date.now()
             });
+            
+            // MODIFIED: Add particle burst for additional visual effect
+            this.addTrailParticles(trail.position, trailColor);
             
             // If we have too many trails, remove the oldest ones
             if (this.trails.length > this.maxTrails) {
@@ -73,6 +85,68 @@ class TrailSystem {
             }
         } catch (error) {
             console.error('Error creating trail:', error);
+        }
+    }
+
+    addTrailParticles(position, color) {
+        try {
+            // Create a burst of particles for each trail
+            const particleCount = 10;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.05 + Math.random() * 0.05, 8, 8),
+                    new THREE.MeshBasicMaterial({
+                        color: color,
+                        transparent: true,
+                        opacity: 0.8,
+                        emissive: color,
+                        emissiveIntensity: 0.5
+                    })
+                );
+                
+                // Position at trail location
+                particle.position.copy(position);
+                
+                // Add random velocity
+                const velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.05,
+                    Math.random() * 0.05,
+                    (Math.random() - 0.5) * 0.05
+                );
+                
+                // Add to scene
+                this.scene.add(particle);
+                
+                // Animate and remove after short period
+                let lifetime = 0;
+                const maxLife = 30;
+                
+                const animateParticle = () => {
+                    lifetime++;
+                    
+                    if (lifetime < maxLife) {
+                        // Move based on velocity
+                        particle.position.x += velocity.x;
+                        particle.position.y += velocity.y;
+                        particle.position.z += velocity.z;
+                        
+                        // Add slight gravity effect
+                        velocity.y -= 0.001;
+                        
+                        // Fade out
+                        particle.material.opacity = 0.8 * (1 - lifetime / maxLife);
+                        
+                        requestAnimationFrame(animateParticle);
+                    } else {
+                        this.scene.remove(particle);
+                    }
+                };
+                
+                animateParticle();
+            }
+        } catch (error) {
+            console.error('Error adding trail particles:', error);
         }
     }
     
