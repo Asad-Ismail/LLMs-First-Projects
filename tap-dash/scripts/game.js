@@ -11,6 +11,9 @@ class Game {
         // Set up Three.js scene
         this.setupScene();
         
+        // Add environment objects (stars, mountains)
+        this.addEnvironmentObjects();
+        
         // Initialize game objects
         this.player = new Player(this.scene);
         this.obstacleManager = new ObstacleManager(this.scene);
@@ -27,6 +30,7 @@ class Game {
         // Performance monitoring (uncomment if needed)
         // this.stats = new Stats();
         // document.body.appendChild(this.stats.dom);
+        
         // Create scene with fog for depth effect
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x111122);
@@ -60,6 +64,24 @@ class Game {
             shininess: 80,
             specular: 0x111111,
             side: THREE.DoubleSide
+        });
+        
+        // Create and position the ground mesh
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2; // Rotate to be horizontal
+        ground.position.set(0, 0, -groundLength/2 + 10); // Position ahead of camera
+        this.scene.add(ground);
+        
+        // Add lighting
+        const ambientLight = new THREE.AmbientLight(0x333333);
+        this.scene.add(ambientLight);
+        
+        const mainLight = new THREE.DirectionalLight(0xffffff, 1);
+        mainLight.position.set(10, 10, 10);
+        this.scene.add(mainLight);
+        
+        // Add some particles for a more immersive scene
+        this.addParticles();
         
         // Responsive canvas
         window.addEventListener('resize', () => {
@@ -68,6 +90,34 @@ class Game {
             this.renderer.setSize(window.innerWidth, window.innerHeight);
             this.renderer.setPixelRatio(window.devicePixelRatio);
         });
+    }
+    
+    addParticles() {
+        // Add floating particles for atmosphere
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particleCount = 200;
+        const posArray = new Float32Array(particleCount * 3);
+        
+        for(let i = 0; i < particleCount * 3; i++) {
+            // Random positions in a defined space around the player
+            posArray[i] = (Math.random() - 0.5) * 10;
+            posArray[i+1] = Math.random() * 5;
+            posArray[i+2] = (Math.random() - 0.5) * 40 - 15; // Mostly ahead of player
+            i += 2;
+        }
+        
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        
+        const particleMaterial = new THREE.PointsMaterial({
+            size: 0.05,
+            color: 0xaaaaff,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+        
+        this.particles = new THREE.Points(particlesGeometry, particleMaterial);
+        this.scene.add(this.particles);
     }
     
     addEnvironmentObjects() {
@@ -138,15 +188,42 @@ class Game {
     }
     
     setupControls() {
-        // Touch/click to jump
-        window.addEventListener('mousedown', () => this.handleTap());
-        window.addEventListener('touchstart', () => this.handleTap());
+        // Touch/click to jump or start game
+        window.addEventListener('mousedown', (e) => {
+            if (!this.isRunning && document.getElementById('start-screen').classList.contains('overlay') && 
+                !document.getElementById('start-screen').classList.contains('hidden')) {
+                this.startGame();
+            } else {
+                this.handleTap();
+            }
+        });
         
-        // Start game button
+        window.addEventListener('touchstart', (e) => {
+            if (!this.isRunning && document.getElementById('start-screen').classList.contains('overlay') && 
+                !document.getElementById('start-screen').classList.contains('hidden')) {
+                this.startGame();
+            } else {
+                this.handleTap();
+            }
+        });
+        
+        // Start game button (still needed for explicit button clicks)
         document.getElementById('start-button').addEventListener('click', () => this.startGame());
         
         // Restart game button
         document.getElementById('restart-button').addEventListener('click', () => this.restartGame());
+        
+        // Add keyboard controls (spacebar to jump or start game)
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                if (!this.isRunning && document.getElementById('start-screen').classList.contains('overlay') && 
+                    !document.getElementById('start-screen').classList.contains('hidden')) {
+                    this.startGame();
+                } else {
+                    this.handleTap();
+                }
+            }
+        });
     }
     
     handleTap() {
@@ -164,10 +241,28 @@ class Game {
     startGame() {
         document.getElementById('start-screen').classList.add('hidden');
         this.isRunning = true;
+        
+        // Add a short countdown before starting
+        const countdownEl = document.createElement('div');
+        countdownEl.className = 'countdown';
+        countdownEl.textContent = '3';
+        document.getElementById('ui-layer').appendChild(countdownEl);
+        
+        let count = 3;
+        const countdown = setInterval(() => {
+            count--;
+            if (count > 0) {
+                countdownEl.textContent = count;
+            } else {
+                clearInterval(countdown);
+                document.getElementById('ui-layer').removeChild(countdownEl);
+            }
+        }, 1000);
     }
     
     gameOver() {
         this.isRunning = false;
+        document.getElementById('final-score').textContent = Math.floor(this.score);
         document.getElementById('game-over').classList.remove('hidden');
     }
     
@@ -194,6 +289,25 @@ class Game {
         this.player.update();
         this.obstacleManager.update();
         this.trailSystem.update();
+        
+        // Animate particles
+        if (this.particles) {
+            this.particles.rotation.y += 0.0005;
+            
+            // Move particles to create flow effect
+            const positions = this.particles.geometry.attributes.position.array;
+            for (let i = 0; i < positions.length; i += 3) {
+                positions[i+2] += 0.03; // Move forward
+                
+                // If particle is too far ahead, reset it to behind
+                if (positions[i+2] > 5) {
+                    positions[i+2] = -30 + Math.random() * 10;
+                    positions[i] = (Math.random() - 0.5) * 10; // Randomize x position
+                    positions[i+1] = Math.random() * 5; // Randomize y position
+                }
+            }
+            this.particles.geometry.attributes.position.needsUpdate = true;
+        }
         
         // Add subtle camera movements for more dynamic feel
         this.updateCamera();
