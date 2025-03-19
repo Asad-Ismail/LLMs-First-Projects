@@ -54,66 +54,135 @@ class Player {
 
     addContinuousParticleTrail() {
         try {
-            // Create a continuous stream of particles behind the player
+            // Create a continuous stream of fire-like particles behind the player
             setInterval(() => {
-                if (!this.isJumping || this.frozen) return; // Only show particles when jumping and not frozen
-                
-                // Create a particle
-                const particle = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.03 + Math.random() * 0.03, 8, 8),
-                    new THREE.MeshBasicMaterial({
-                        color: new THREE.Color().setHSL(Math.random(), 0.9, 0.6),
-                        transparent: true,
-                        opacity: 0.7
-                    })
-                );
-                
-                // Position slightly behind player
-                particle.position.set(
-                    this.position.x + (Math.random() - 0.5) * 0.1,
-                    this.position.y - 0.1,
-                    this.position.z + 0.1
-                );
-                
-                this.scene.add(particle);
-                
-                // Animate the particle
-                let lifetime = 0;
-                const maxLife = 20;
-                
-                const animateParticle = () => {
-                    lifetime++;
-                    
-                    if (lifetime < maxLife) {
-                        // Drift slightly
-                        particle.position.x += (Math.random() - 0.5) * 0.01;
-                        particle.position.y += (Math.random() - 0.5) * 0.01;
-                        particle.position.z += 0.02; // Move backward relative to player
+                // Show fire trail when moving or jumping and not frozen
+                if ((this.isJumping || Math.abs(this.velocity.x) > 0.05) && !this.frozen) {
+                    // Create multiple particles for fire effect
+                    for (let i = 0; i < 3; i++) { // Create 3 particles per interval for richer effect
+                        // Generate fire-colored particles (yellows, oranges, reds)
+                        const fireHue = 0.05 + Math.random() * 0.1; // Range from orange-red to yellow
+                        const fireSaturation = 0.7 + Math.random() * 0.3;
+                        const fireBrightness = 0.5 + Math.random() * 0.5;
                         
-                        // Fade out
-                        particle.material.opacity = 0.7 * (1 - lifetime / maxLife);
+                        // Create a particle
+                        const particle = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.04 + Math.random() * 0.04, 8, 8),
+                            new THREE.MeshBasicMaterial({
+                                color: new THREE.Color().setHSL(fireHue, fireSaturation, fireBrightness),
+                                transparent: true,
+                                opacity: 0.7 + Math.random() * 0.3
+                            })
+                        );
                         
-                        requestAnimationFrame(animateParticle);
-                    } else {
-                        this.scene.remove(particle);
+                        // Position slightly behind player with some randomness
+                        particle.position.set(
+                            this.position.x + (Math.random() - 0.5) * 0.2,
+                            this.position.y - 0.1 + (Math.random() - 0.3) * 0.2, // Slightly below player
+                            this.position.z + 0.05 + Math.random() * 0.1 // Slightly behind
+                        );
+                        
+                        this.scene.add(particle);
+                        
+                        // Animate the particle to create a fire-like effect
+                        let lifetime = 0;
+                        const maxLife = 15 + Math.floor(Math.random() * 10); // Variable lifetime
+                        
+                        const animateParticle = () => {
+                            lifetime++;
+                            
+                            if (lifetime < maxLife) {
+                                // Fire particles rise slightly and drift
+                                particle.position.x += (Math.random() - 0.5) * 0.02;
+                                particle.position.y += 0.005 + Math.random() * 0.01; // Slight upward drift
+                                particle.position.z += 0.02 + Math.random() * 0.01; // Move backward
+                                
+                                // Shrink as they disappear
+                                const scale = 1 - (lifetime / maxLife) * 0.8;
+                                particle.scale.set(scale, scale, scale);
+                                
+                                // Fade out
+                                particle.material.opacity = 0.8 * (1 - lifetime / maxLife);
+                                
+                                // Add color shifting toward more yellow as it rises (like real fire)
+                                if (lifetime > maxLife * 0.5) {
+                                    // Shift toward more yellow/white at the end of life
+                                    particle.material.color.setHSL(
+                                        Math.min(0.15, fireHue + (lifetime/maxLife) * 0.1), 
+                                        Math.max(0.5, fireSaturation - (lifetime/maxLife) * 0.3),
+                                        Math.min(0.9, fireBrightness + (lifetime/maxLife) * 0.3)
+                                    );
+                                }
+                                
+                                requestAnimationFrame(animateParticle);
+                            } else {
+                                this.scene.remove(particle);
+                            }
+                        };
+                        
+                        animateParticle();
                     }
-                };
-                
-                animateParticle();
-            }, 50); // Create particles at regular intervals
+                    
+                    // Occasionally add a spark/ember particle
+                    if (Math.random() > 0.7) {
+                        const ember = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.02 + Math.random() * 0.02, 6, 6),
+                            new THREE.MeshBasicMaterial({
+                                color: new THREE.Color().setHSL(0.1, 0.9, 0.8), // Bright orange-yellow
+                                transparent: true,
+                                opacity: 0.9
+                            })
+                        );
+                        
+                        // Position near the player
+                        ember.position.set(
+                            this.position.x + (Math.random() - 0.5) * 0.15,
+                            this.position.y - 0.05 + Math.random() * 0.1,
+                            this.position.z + 0.1 + Math.random() * 0.05
+                        );
+                        
+                        this.scene.add(ember);
+                        
+                        // Animate the ember with erratic movement
+                        let emberTime = 0;
+                        const emberLife = 20 + Math.floor(Math.random() * 15);
+                        
+                        const animateEmber = () => {
+                            emberTime++;
+                            
+                            if (emberTime < emberLife) {
+                                // Embers move more erratically and faster
+                                ember.position.x += (Math.random() - 0.5) * 0.03;
+                                ember.position.y += 0.01 + Math.random() * 0.02; // Rise faster
+                                ember.position.z += 0.01 + Math.random() * 0.03;
+                                
+                                // Embers fade and shrink
+                                ember.material.opacity = 0.9 * (1 - emberTime / emberLife);
+                                ember.scale.multiplyScalar(0.97);
+                                
+                                requestAnimationFrame(animateEmber);
+                            } else {
+                                this.scene.remove(ember);
+                            }
+                        };
+                        
+                        animateEmber();
+                    }
+                }
+            }, 30); // Create particles more frequently for smooth effect
         } catch (error) {
-            console.error("Error creating continuous particle trail:", error);
+            console.error("Error creating fire particle trail:", error);
         }
     }
 
     createPlayerMesh() {
         try {
-            // MODIFIED: Create a more vibrant and interesting player model
+            // MODIFIED: Create a more vibrant and exciting player model with golden-orange theme
             
-            // Core sphere (inner glow)
+            // Core sphere (inner bright glow)
             const coreGeometry = new THREE.SphereGeometry(this.size.x * 0.6, 16, 16);
             const coreMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0xffffff,
+                color: 0xffdd44, // Bright gold/yellow core
                 transparent: true,
                 opacity: 0.9
             });
@@ -122,9 +191,9 @@ class Player {
             // Middle layer with pulsing effect
             const middleGeometry = new THREE.SphereGeometry(this.size.x * 0.8, 20, 20);
             const middleMaterial = new THREE.MeshPhongMaterial({ 
-                color: 0x44aaff,
+                color: 0xff8800, // Orange middle layer
                 transparent: true,
-                opacity: 0.6,
+                opacity: 0.7,
                 shininess: 100
             });
             this.middleLayer = new THREE.Mesh(middleGeometry, middleMaterial);
@@ -132,12 +201,12 @@ class Player {
             // Outer shell (semi-transparent)
             const shellGeometry = new THREE.SphereGeometry(this.size.x, 20, 20);
             const shellMaterial = new THREE.MeshPhongMaterial({ 
-                color: 0x88aaff,
+                color: 0xff5522, // Reddish-orange outer shell
                 transparent: true,
                 opacity: 0.7,
                 shininess: 90,
-                emissive: 0x4477ff,
-                emissiveIntensity: 0.5
+                emissive: 0xff3300, // Red-orange glow
+                emissiveIntensity: 0.6
             });
             this.mesh = new THREE.Mesh(shellGeometry, shellMaterial);
             
@@ -162,9 +231,9 @@ class Player {
         console.log("Creating fallback player mesh");
         
         try {
-            // Simple sphere as fallback
+            // Simple sphere as fallback with new color
             const geometry = new THREE.SphereGeometry(this.size.x, 8, 8);
-            const material = new THREE.MeshBasicMaterial({ color: 0x88aaff });
+            const material = new THREE.MeshBasicMaterial({ color: 0xff7700 }); // Orange fallback
             this.mesh = new THREE.Mesh(geometry, material);
             this.mesh.position.set(this.position.x, this.position.y, this.position.z);
             this.scene.add(this.mesh);
@@ -246,20 +315,24 @@ class Player {
     
     addGlow() {
         try {
-            // Add a more dynamic glow effect
-            this.light = new THREE.PointLight(0x88aaff, 1, 3);
+            // Add a more dynamic glow effect with updated colors
+            this.light = new THREE.PointLight(0xff8800, 1.5, 3); // Changed to orange
             this.light.position.copy(this.mesh.position);
             this.scene.add(this.light);
             
-            // Add a secondary pulse light
-            this.pulseLight = new THREE.PointLight(0xffffff, 0.5, 2);
-            this.pulseLight.position.copy(this.mesh.position);
-            this.scene.add(this.pulseLight);
+            // Add a pulsing effect to the glow
+            this.pulseTime = 0;
+            
+            // Create a second light for more dramatic effect
+            this.secondaryLight = new THREE.PointLight(0xff5500, 1, 2); // Red-orange secondary light
+            this.secondaryLight.position.copy(this.mesh.position);
+            this.scene.add(this.secondaryLight);
+            
+            // Ensure the glow effect is updated with the player
+            this.glowActive = true;
         } catch(error) {
-            console.error("Error adding glow effect:", error);
-            // Create mock light objects if real ones fail
-            this.light = { position: { copy: function() {} }, intensity: 1 };
-            this.pulseLight = { position: { copy: function() {} }, intensity: 0.5 };
+            console.error("Error adding glow:", error);
+            this.glowActive = false;
         }
     }
     
@@ -361,87 +434,89 @@ class Player {
     }
     
     update() {
+        if (this.frozen) return; // Don't update if frozen
+        
         try {
-            // If player is frozen, skip all movement updates
-            if (this.frozen) {
-                // Still update light and visual effects
-                if (this.light) {
-                    this.light.position.copy(this.mesh.position);
-                }
-                if (this.pulseLight) {
-                    this.pulseLight.position.copy(this.mesh.position);
-                    this.pulseLight.intensity = 0.3 + Math.sin(Date.now() * 0.003) * 0.3;
-                }
-                return;
-            }
-            
-            // More refined gravity and physics
-            // Apply gravity with slight easing for better feel
-            if (this.velocity.y > 0) {
-                this.velocity.y -= this.gravity * 0.9;
+            // Apply gravity to vertical velocity
+            if (this.slowMotion) {
+                this.velocity.y -= this.gravity * 0.33; // 1/3 speed in slow motion
             } else {
-                this.velocity.y -= this.gravity * 1.1;
+                this.velocity.y -= this.gravity;
             }
             
-            // Cap terminal velocity for better control
-            if (this.velocity.y < -0.5) {
-                this.velocity.y = -0.5;
+            // Apply horizontal movement (capped at maximum speed)
+            if (this.movingLeft) {
+                this.velocity.x = Math.max(-this.maxHorizontalSpeed, this.velocity.x - this.horizontalAcceleration);
+            } else if (this.movingRight) {
+                this.velocity.x = Math.min(this.maxHorizontalSpeed, this.velocity.x + this.horizontalAcceleration);
+            } else {
+                // Slow down when not actively moving
+                this.velocity.x *= 0.9;
+                
+                // Stop completely if very slow
+                if (Math.abs(this.velocity.x) < 0.001) {
+                    this.velocity.x = 0;
+                }
             }
             
-            // Update position
+            // Update position based on velocity
+            this.position.x += this.velocity.x;
             this.position.y += this.velocity.y;
             
-            // MODIFIED: Improved horizontal movement with user control
-            // Apply horizontal acceleration based on input
-            if (this.movingLeft) {
-                this.velocity.x -= this.horizontalAcceleration;
-            } else if (this.movingRight) {
-                this.velocity.x += this.horizontalAcceleration;
-            } else {
-                // Slow down if no input
-                this.velocity.x *= 0.9;
-            }
+            // Constrain horizontal movement to the platform width
+            this.position.x = Math.max(-2, Math.min(2, this.position.x));
             
-            // Cap horizontal speed
-            if (this.velocity.x > this.maxHorizontalSpeed) {
-                this.velocity.x = this.maxHorizontalSpeed;
-            } else if (this.velocity.x < -this.maxHorizontalSpeed) {
-                this.velocity.x = -this.maxHorizontalSpeed;
-            }
-            
-            // Update horizontal position
-            this.position.x += this.velocity.x;
-            
-            // Keep player within bounds
-            const boundaryLimit = 2.5;
-            if (this.position.x > boundaryLimit) {
-                this.position.x = boundaryLimit;
-                this.velocity.x = 0;
-            } else if (this.position.x < -boundaryLimit) {
-                this.position.x = -boundaryLimit;
-                this.velocity.x = 0;
-            }
-            
-            // Ground collision
-            if (this.position.y <= this.size.y) {
-                this.position.y = this.size.y;
+            // Check if landed on ground
+            if (this.position.y <= 0.5) {
+                this.position.y = 0.5;
                 this.velocity.y = 0;
                 this.isJumping = false;
+                this.doubleJumpAvailable = false;
             }
             
-            // Update mesh position
-            this.mesh.position.set(this.position.x, this.position.y, this.position.z);
+            // Update mesh position to match player position
+            if (this.mesh) {
+                this.mesh.position.copy(this.position);
+                
+                // MODIFIED: Apply gentle rotation based on movement for more visual appeal
+                const targetRotationX = -this.velocity.z * 5; // Tilt forward/backward based on z movement
+                const targetRotationZ = -this.velocity.x * 5; // Tilt left/right based on x movement
+                
+                // Smoothly interpolate rotation
+                this.mesh.rotation.x += (targetRotationX - this.mesh.rotation.x) * 0.1;
+                this.mesh.rotation.z += (targetRotationZ - this.mesh.rotation.z) * 0.1;
+                
+                // ADDED: Dynamic scaling for a slight bouncy effect
+                const scale = 1.0 + Math.sin(Date.now() * 0.005) * 0.03;
+                this.mesh.scale.set(scale, scale, scale);
+            }
             
-            // Update light positions
+            // Update glow light position and effects
             if (this.light) {
-                this.light.position.copy(this.mesh.position);
+                this.light.position.copy(this.position);
+                
+                // MODIFIED: Dynamic fire-like glow pulsing effect
+                this.pulseTime += 0.1;
+                const pulseIntensity = 1.5 + Math.sin(this.pulseTime) * 0.3;
+                this.light.intensity = pulseIntensity;
+                
+                // Slightly randomize the light color for flickering fire effect
+                if (Math.random() > 0.7) {
+                    const hue = 0.05 + Math.random() * 0.1; // Orange-yellow range
+                    this.light.color.setHSL(hue, 0.9, 0.6);
+                }
             }
             
-            // Animate pulse light with more dramatic effect
-            const time = Date.now() * 0.003;
-            if (this.pulseLight) {
-                this.pulseLight.intensity = 0.3 + Math.sin(time) * 0.3;
-                this.pulseLight.position.copy(this.mesh.position);
+            // Update secondary light
+            if (this.secondaryLight) {
+                this.secondaryLight.position.copy(this.position);
+                this.secondaryLight.position.y -= 0.1; // Position slightly below for better visual effect
+                
+                // MODIFIED: Flicker the secondary light like a flame
+                if (Math.random() > 0.5) {
+                    const flickerIntensity = 0.8 + Math.random() * 0.4;
+                    this.secondaryLight.intensity = flickerIntensity;
+                }
             }
             
             // More dynamic rotation for visual interest
@@ -473,9 +548,9 @@ class Player {
                 if (this.middleLayer) {
                     const pulseSpeed = this.slowMotion ? 2 : 5;
                     this.middleLayer.scale.set(
-                        1 + Math.sin(time * pulseSpeed) * 0.1,
-                        1 + Math.sin(time * pulseSpeed) * 0.1,
-                        1 + Math.sin(time * pulseSpeed) * 0.1
+                        1 + Math.sin(Date.now() * pulseSpeed) * 0.1,
+                        1 + Math.sin(Date.now() * pulseSpeed) * 0.1,
+                        1 + Math.sin(Date.now() * pulseSpeed) * 0.1
                     );
                 }
             } else {
@@ -494,9 +569,9 @@ class Player {
                 if (this.middleLayer) {
                     const pulseSpeed = this.slowMotion ? 0.5 : 2;
                     this.middleLayer.scale.set(
-                        1 + Math.sin(time * pulseSpeed) * 0.05,
-                        1 + Math.sin(time * pulseSpeed) * 0.05,
-                        1 + Math.sin(time * pulseSpeed) * 0.05
+                        1 + Math.sin(Date.now() * pulseSpeed) * 0.05,
+                        1 + Math.sin(Date.now() * pulseSpeed) * 0.05,
+                        1 + Math.sin(Date.now() * pulseSpeed) * 0.05
                     );
                 }
             }
@@ -520,7 +595,7 @@ class Player {
                 this.mesh.scale.x += stretchFactor * Math.sign(-this.velocity.x);
                 this.mesh.scale.z += stretchFactor * 0.5;
             }
-        } catch(error) {
+        } catch (error) {
             console.error("Error in player update:", error);
         }
     }
