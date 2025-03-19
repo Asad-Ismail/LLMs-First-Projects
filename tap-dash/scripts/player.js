@@ -19,6 +19,11 @@ class Player {
         this.movingLeft = false;
         this.movingRight = false;
         
+        // ADDED: Flag to freeze player during countdown
+        this.frozen = false;
+        // ADDED: Flag for slow motion effect
+        this.slowMotion = false;
+        
         // Create the player mesh with improved looks
         this.createPlayerMesh();
         
@@ -26,12 +31,32 @@ class Player {
         this.addGlow();
     }
     
+    // ADDED: New methods for freezing player during countdown
+    freeze() {
+        this.frozen = true;
+        this.velocity = { x: 0, y: 0, z: 0 };
+    }
+    
+    unfreeze() {
+        this.frozen = false;
+    }
+    
+    // ADDED: Method for slow motion effect
+    setSlowMotion(enabled) {
+        this.slowMotion = enabled;
+        // Adjust physics parameters for slow motion
+        if (enabled) {
+            this.gravity = 0.005; // Lower gravity in slow motion
+        } else {
+            this.gravity = 0.015; // Reset to normal
+        }
+    }
 
     addContinuousParticleTrail() {
         try {
             // Create a continuous stream of particles behind the player
             setInterval(() => {
-                if (!this.isJumping) return; // Only show particles when jumping
+                if (!this.isJumping || this.frozen) return; // Only show particles when jumping and not frozen
                 
                 // Create a particle
                 const particle = new THREE.Mesh(
@@ -239,7 +264,13 @@ class Player {
     }
     
     jump() {
-        console.log('Jump attempt - isJumping:', this.isJumping, 'doubleJumpAvailable:', this.doubleJumpAvailable);
+        console.log('Jump attempt - isJumping:', this.isJumping, 'doubleJumpAvailable:', this.doubleJumpAvailable, 'frozen:', this.frozen);
+        
+        // Cannot jump if frozen
+        if (this.frozen) {
+            console.log('Jump ignored - player is frozen');
+            return false;
+        }
         
         if (!this.isJumping) {
             // First jump
@@ -320,15 +351,30 @@ class Player {
     
     // Added: New methods for horizontal movement
     moveLeft(isMoving) {
+        if (this.frozen) return; // Can't move if frozen
         this.movingLeft = isMoving;
     }
     
     moveRight(isMoving) {
+        if (this.frozen) return; // Can't move if frozen
         this.movingRight = isMoving;
     }
     
     update() {
         try {
+            // If player is frozen, skip all movement updates
+            if (this.frozen) {
+                // Still update light and visual effects
+                if (this.light) {
+                    this.light.position.copy(this.mesh.position);
+                }
+                if (this.pulseLight) {
+                    this.pulseLight.position.copy(this.mesh.position);
+                    this.pulseLight.intensity = 0.3 + Math.sin(Date.now() * 0.003) * 0.3;
+                }
+                return;
+            }
+            
             // More refined gravity and physics
             // Apply gravity with slight easing for better feel
             if (this.velocity.y > 0) {
@@ -399,8 +445,10 @@ class Player {
             }
             
             // More dynamic rotation for visual interest
-            this.mesh.rotation.y += 0.02;
-            this.mesh.rotation.z += 0.01;
+            // Adjust rotation speed in slow motion
+            const rotationSpeed = this.slowMotion ? 0.005 : 0.02;
+            this.mesh.rotation.y += rotationSpeed;
+            this.mesh.rotation.z += rotationSpeed / 2;
             
             // MODIFIED: Better visual feedback during different states
             if (this.isJumping) {
@@ -423,10 +471,11 @@ class Player {
                 
                 // Pulse the middle layer
                 if (this.middleLayer) {
+                    const pulseSpeed = this.slowMotion ? 2 : 5;
                     this.middleLayer.scale.set(
-                        1 + Math.sin(time * 5) * 0.1,
-                        1 + Math.sin(time * 5) * 0.1,
-                        1 + Math.sin(time * 5) * 0.1
+                        1 + Math.sin(time * pulseSpeed) * 0.1,
+                        1 + Math.sin(time * pulseSpeed) * 0.1,
+                        1 + Math.sin(time * pulseSpeed) * 0.1
                     );
                 }
             } else {
@@ -443,10 +492,11 @@ class Player {
                 
                 // Normal pulsing for middle layer
                 if (this.middleLayer) {
+                    const pulseSpeed = this.slowMotion ? 0.5 : 2;
                     this.middleLayer.scale.set(
-                        1 + Math.sin(time * 2) * 0.05,
-                        1 + Math.sin(time * 2) * 0.05,
-                        1 + Math.sin(time * 2) * 0.05
+                        1 + Math.sin(time * pulseSpeed) * 0.05,
+                        1 + Math.sin(time * pulseSpeed) * 0.05,
+                        1 + Math.sin(time * pulseSpeed) * 0.05
                     );
                 }
             }
@@ -482,6 +532,10 @@ class Player {
         this.doubleJumpAvailable = false;
         this.movingLeft = false;
         this.movingRight = false;
+        this.frozen = false;
+        this.slowMotion = false;
+        this.gravity = 0.015; // Reset to normal gravity
+        
         try {
             this.mesh.position.set(this.position.x, this.position.y, this.position.z);
             this.mesh.rotation.set(0, 0, 0);

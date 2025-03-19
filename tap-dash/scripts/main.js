@@ -22,7 +22,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Remove after animation completes
         setTimeout(() => {
-            document.body.removeChild(feedback);
+            if (document.body.contains(feedback)) {
+                document.body.removeChild(feedback);
+            }
         }, 500);
     });
     
@@ -56,11 +58,61 @@ document.addEventListener('DOMContentLoaded', () => {
                     }, 1000);
                 }
             }, 5000);
+
+            // ADDED: Debug checker to ensure THREE.js is properly loaded
+            console.log('THREE.js availability check:', {
+                threeLoaded: window.threeLoaded,
+                threeExists: typeof THREE !== 'undefined',
+                sceneAvailable: typeof THREE !== 'undefined' && typeof THREE.Scene === 'function'
+            });
         } catch (error) {
             console.error('Error initializing game:', error);
+            // ADDED: Show user-friendly error and retry option
+            showErrorScreen();
         }
     }, 100); // Short delay to ensure everything is ready
 });
+
+// ADDED: Error handling screen
+function showErrorScreen() {
+    try {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.position = 'absolute';
+        errorDiv.style.top = '0';
+        errorDiv.style.left = '0';
+        errorDiv.style.width = '100%';
+        errorDiv.style.height = '100%';
+        errorDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        errorDiv.style.color = 'white';
+        errorDiv.style.fontSize = '18px';
+        errorDiv.style.padding = '20px';
+        errorDiv.style.boxSizing = 'border-box';
+        errorDiv.style.zIndex = '1000';
+        errorDiv.style.display = 'flex';
+        errorDiv.style.flexDirection = 'column';
+        errorDiv.style.justifyContent = 'center';
+        errorDiv.style.alignItems = 'center';
+        errorDiv.style.textAlign = 'center';
+        
+        errorDiv.innerHTML = `
+            <h2 style="color:#ff5555;margin-bottom:20px;">Game Loading Error</h2>
+            <p>There was a problem loading the game components.</p>
+            <p>This might be due to network issues or browser compatibility.</p>
+            <button id="retry-button" style="background-color:#4466ff;color:white;border:none;padding:10px 20px;margin-top:20px;cursor:pointer;border-radius:5px;">Retry</button>
+        `;
+        
+        document.body.appendChild(errorDiv);
+        
+        // Add retry handler
+        document.getElementById('retry-button').addEventListener('click', () => {
+            document.body.removeChild(errorDiv);
+            location.reload();
+        });
+    } catch (e) {
+        console.error('Error showing error screen:', e);
+        alert('Game failed to load. Please refresh the page to try again.');
+    }
+}
 
 // Add fallback handlers for buttons
 function addFallbackHandlers() {
@@ -109,103 +161,88 @@ function addFallbackHandlers() {
             console.log('Space key pressed (fallback handler)');
             if (!window.game.isRunning) {
                 window.game.startGame();
-            } else {
+            } else if (window.game.gameStarted) { // ADDED: Check gameStarted flag
                 window.game.handleTap();
+            }
+        }
+    });
+    
+    // ADDED: Escape key to pause game
+    document.addEventListener('keydown', function(e) {
+        if (e.code === 'Escape' && window.game && window.game.isRunning) {
+            console.log('Escape key pressed - toggle pause');
+            if (window.game.togglePause) {
+                window.game.togglePause();
             }
         }
     });
 }
 
-// High score management
-function loadHighScore() {
-    const highScore = localStorage.getItem('tapDashHighScore') || 0;
-    const highScoreElement = document.getElementById('high-score');
-    if (highScoreElement) {
-        highScoreElement.textContent = `Best: ${highScore}`;
+// Handle window focus/blur for better game experience
+window.addEventListener('blur', () => {
+    if (window.game && window.game.isRunning && window.game.handleBlur) {
+        window.game.handleBlur();
     }
-    return parseInt(highScore);
-}
+});
 
-function saveHighScore(score) {
-    const currentHighScore = loadHighScore();
-    if (score > currentHighScore) {
-        localStorage.setItem('tapDashHighScore', score);
-        
-        const highScoreElement = document.getElementById('high-score');
-        if (highScoreElement) {
-            highScoreElement.textContent = `Best: ${score}`;
-        }
-        
-        const highScoreMessage = document.getElementById('high-score-message');
-        if (highScoreMessage) {
-            highScoreMessage.classList.remove('hidden');
-        }
-        
-        return true;
+window.addEventListener('focus', () => {
+    if (window.game && window.game.handleFocus) {
+        window.game.handleFocus();
     }
-    return false;
-}
+});
 
-// Ensure the updateScoreDisplay function is defined and works
-function updateScoreDisplay(score) {
-    console.log('Updating score display:', score);
-    
-    const scoreElement = document.getElementById('score');
-    if (scoreElement) {
-        scoreElement.textContent = `Score: ${score}`;
-        
-        // Add a visual highlight effect
-        scoreElement.classList.add('score-highlight');
-        setTimeout(() => {
-            scoreElement.classList.remove('score-highlight');
-        }, 300);
-    }
-    
-    const finalScoreElement = document.getElementById('final-score');
-    if (finalScoreElement) {
-        finalScoreElement.textContent = score;
-    }
-    
-    // Check if this is a new high score
-    const currentHighScore = loadHighScore();
-    if (score > currentHighScore) {
-        const highScoreElement = document.getElementById('high-score');
-        if (highScoreElement) {
-            highScoreElement.textContent = `Best: ${score}`;
-        }
-    }
-}
-
-// Extend Game.gameOver to save high score
-// We need to wait until Game is defined
-document.addEventListener('DOMContentLoaded', () => {
+// Handle orientation change on mobile devices
+window.addEventListener('orientationchange', () => {
     setTimeout(() => {
-        if (typeof Game !== 'undefined') {
-            const originalGameOver = Game.prototype.gameOver;
-            
-            Game.prototype.gameOver = function() {
-                console.log('Game over extending with high score saving');
-                
-                // Save high score
-                const isNewHighScore = saveHighScore(Math.floor(this.score));
-                
-                // Call the original gameOver method
-                originalGameOver.call(this);
-                
-                // Show high score message if applicable
-                const highScoreMessage = document.getElementById('high-score-message');
-                if (highScoreMessage) {
-                    if (isNewHighScore) {
-                        highScoreMessage.classList.remove('hidden');
-                    } else {
-                        highScoreMessage.classList.add('hidden');
-                    }
-                }
-            };
-            
-            console.log('Game.gameOver successfully extended');
-        } else {
-            console.error('Game class not defined, could not extend gameOver');
+        if (window.game && window.game.handleResize) {
+            window.game.handleResize();
         }
     }, 200);
 });
+
+// ADDED: Check for Three.js availability
+function checkThreeAvailability() {
+    if (typeof THREE === 'undefined') {
+        console.error('THREE.js is not defined!');
+        return false;
+    }
+    
+    if (typeof THREE.Scene !== 'function') {
+        console.error('THREE.Scene is not available!');
+        return false;
+    }
+    
+    console.log('THREE.js appears to be properly loaded');
+    return true;
+}
+
+// ADDED: Function to retry initialization with fallback mock if needed
+window.retryGameInitialization = function() {
+    if (window.game) {
+        console.log('Game already initialized, no need to retry');
+        return;
+    }
+    
+    console.log('Attempting to retry game initialization');
+    
+    if (!checkThreeAvailability()) {
+        console.log('THREE.js not available, creating mock');
+        createThreeMock();
+    }
+    
+    try {
+        window.game = new Game();
+        console.log('Game successfully initialized on retry');
+    } catch (error) {
+        console.error('Retry initialization failed:', error);
+        showErrorScreen();
+    }
+};
+
+// Safety check - if game fails to initialize within 5 seconds, show error
+setTimeout(() => {
+    if (!window.game) {
+        console.error('Game failed to initialize within timeout');
+        window.retryGameInitialization();
+    }
+}, 5000);

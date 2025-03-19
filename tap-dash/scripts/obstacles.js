@@ -11,6 +11,24 @@ class ObstacleManager {
         this.frameCount = 0;
         this.minGap = 2;
         this.maxGap = 5;
+        
+        // ADDED: Safe zone distance to prevent spawning obstacles too close to player
+        this.safeZoneDistance = 10;
+        
+        // ADDED: Flag to control obstacle generation
+        this.generatingObstacles = false;
+    }
+    
+    // ADDED: Method to start generating obstacles (called after countdown)
+    startGeneratingObstacles() {
+        this.generatingObstacles = true;
+        console.log('Obstacle generation started');
+    }
+    
+    // ADDED: Method to stop generating obstacles
+    stopGeneratingObstacles() {
+        this.generatingObstacles = false;
+        console.log('Obstacle generation stopped');
     }
     
     spawnObstacle() {
@@ -26,7 +44,11 @@ class ObstacleManager {
             const color = new THREE.Color().setHSL(hue, saturation, lightness);
             
             // MODIFIED: Add lateral variation to obstacle positions
-            const lateralPosition = (Math.random() - 0.5) * 3;
+            // Make sure obstacles don't spawn directly on player's path
+            let lateralPosition;
+            do {
+                lateralPosition = (Math.random() - 0.5) * 3;
+            } while (Math.abs(lateralPosition) < 0.3); // Ensure some minimum offset from center
             
             switch(obstacleType) {
                 case 0: // Standard block
@@ -115,6 +137,9 @@ class ObstacleManager {
             // Add randomized rotation
             mesh.rotation.y = Math.random() * Math.PI * 0.2;
             
+            // Add a glowing outline to make obstacles more visible
+            this.addGlowingOutline(mesh, color, width, height, depth);
+            
             // Add to scene and obstacles array
             this.scene.add(mesh);
             this.obstacles.push({
@@ -128,24 +153,82 @@ class ObstacleManager {
         }
     }
     
+    // ADDED: Method to add glowing outline to obstacles
+    addGlowingOutline(mesh, color, width, height, depth) {
+        try {
+            // Create a slightly larger wireframe version of the obstacle
+            let outlineGeometry;
+            
+            // Determine the type of geometry based on the mesh
+            if (mesh.geometry instanceof THREE.BoxGeometry) {
+                outlineGeometry = new THREE.BoxGeometry(width * 1.05, height * 1.05, depth * 1.05);
+            } else if (mesh.geometry instanceof THREE.CylinderGeometry) {
+                const radius = width / 2;
+                outlineGeometry = new THREE.CylinderGeometry(radius * 1.05, radius * 1.05, height * 1.05, 16);
+            } else if (mesh.geometry instanceof THREE.SphereGeometry) {
+                const radius = width / 2;
+                outlineGeometry = new THREE.SphereGeometry(radius * 1.05, 24, 24);
+            } else {
+                // For complex geometries like the tube, skip outline
+                return;
+            }
+            
+            // Create outline material
+            const outlineMaterial = new THREE.MeshBasicMaterial({
+                color: color,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.4,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const outline = new THREE.Mesh(outlineGeometry, outlineMaterial);
+            mesh.add(outline);
+            
+            // Add pulsing animation to outline
+            const pulseOutline = () => {
+                if (!outline.parent) return; // Stop if removed from scene
+                
+                const time = Date.now() * 0.001;
+                const scale = 1.05 + Math.sin(time * 3) * 0.02;
+                outline.scale.set(scale, scale, scale);
+                
+                outlineMaterial.opacity = 0.3 + Math.sin(time * 2) * 0.1;
+                
+                requestAnimationFrame(pulseOutline);
+            };
+            
+            pulseOutline();
+        } catch (error) {
+            console.error('Error adding glowing outline:', error);
+        }
+    }
     
     update() {
         try {
-            // MODIFIED: Spawn new obstacles at interval with more randomness
-            this.frameCount++;
-            if (this.frameCount >= this.spawnInterval) {
-                this.spawnObstacle();
-                this.frameCount = 0;
-                
-                // MODIFIED: More varied spawn intervals
-                this.spawnInterval = Math.floor(Math.random() * (this.maxGap - this.minGap) + this.minGap) * 50;
-                
-                // Sometimes spawn a sequence of obstacles
-                if (Math.random() < 0.2) { // Reduced chance from 0.3 to 0.2
-                    // Schedule additional obstacles for an obstacle "pattern"
-                    setTimeout(() => this.spawnObstacle(), 400);
-                    if (Math.random() < 0.3) { // Reduced chance from 0.5 to 0.3
-                        setTimeout(() => this.spawnObstacle(), 800);
+            // Only spawn new obstacles if generation is active
+            if (this.generatingObstacles) {
+                // MODIFIED: Spawn new obstacles at interval with more randomness
+                this.frameCount++;
+                if (this.frameCount >= this.spawnInterval) {
+                    this.spawnObstacle();
+                    this.frameCount = 0;
+                    
+                    // MODIFIED: More varied spawn intervals
+                    this.spawnInterval = Math.floor(Math.random() * (this.maxGap - this.minGap) + this.minGap) * 50;
+                    
+                    // Sometimes spawn a sequence of obstacles
+                    if (Math.random() < 0.2) { // Reduced chance from 0.3 to 0.2
+                        // Schedule additional obstacles for an obstacle "pattern"
+                        setTimeout(() => {
+                            if (this.generatingObstacles) this.spawnObstacle();
+                        }, 400);
+                        
+                        if (Math.random() < 0.3) { // Reduced chance from 0.5 to 0.3
+                            setTimeout(() => {
+                                if (this.generatingObstacles) this.spawnObstacle();
+                            }, 800);
+                        }
                     }
                 }
             }
@@ -223,6 +306,7 @@ class ObstacleManager {
             this.obstacles = [];
             this.obstacleSpeed = 0.1;
             this.frameCount = 0;
+            this.generatingObstacles = false;
         } catch (error) {
             console.error('Error resetting obstacles:', error);
         }

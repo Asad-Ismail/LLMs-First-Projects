@@ -27,9 +27,28 @@ class TrailSystem {
         
         // Keep track of last color to avoid repeats
         this.lastColorIndex = -1;
+        
+        // ADDED: Flag to ensure trails only apply to player
+        this.trailsEnabled = true;
+        this.playerTrailsOnly = true; // NEW: Set to true to only show trails for player
     }
     
-    createTrail(playerPosition) {
+    // ADDED: Method to enable/disable trails
+    enableTrails(enabled) {
+        this.trailsEnabled = enabled;
+    }
+    
+    // ADDED: Method to set whether trails should only be for the player
+    setPlayerTrailsOnly(playerOnly) {
+        this.playerTrailsOnly = playerOnly;
+    }
+    
+    createTrail(position, objectType = 'player') {
+        // If trails are disabled or we only want player trails and this isn't a player, return null
+        if (!this.trailsEnabled || (this.playerTrailsOnly && objectType !== 'player')) {
+            return null;
+        }
+        
         try {
             // Store the last trail time for continuous trail effect
             this.lastTrailTime = Date.now();
@@ -77,9 +96,9 @@ class TrailSystem {
             
             // MODIFIED: Better trail positioning relative to player
             trail.position.set(
-                playerPosition.x,
-                playerPosition.y - 0.2, // Slightly lower to show more clearly
-                playerPosition.z - 0.1  // MODIFIED: Closer behind player
+                position.x,
+                position.y - 0.2, // Slightly lower to show more clearly
+                position.z - 0.1  // MODIFIED: Closer behind player
             );
             trail.rotation.y = Math.PI / 2;
             
@@ -201,10 +220,11 @@ class TrailSystem {
         this.trailInterval = setInterval(() => {
             // Only create continuous trail if player is moving
             if ((player.isJumping || Math.abs(player.velocity.x) > 0.05) && 
-                Date.now() - this.lastTrailTime > this.trailDelay) {
+                Date.now() - this.lastTrailTime > this.trailDelay &&
+                !player.frozen) { // Don't create trails when player is frozen
                 
                 // Create a smaller trail when moving horizontally vs jumping
-                const trail = this.createTrail(player.position);
+                const trail = this.createTrail(player.position, 'player');
                 
                 // Make trail size dependent on movement type
                 if (trail && !player.isJumping && Math.abs(player.velocity.x) > 0.05) {
@@ -349,10 +369,14 @@ class TrailSystem {
     // Get trail positions for collision detection
     getTrails() {
         try {
-            return this.trails.map(trail => ({
-                position: trail.mesh.position,
-                size: trail.size
-            }));
+            // Don't return trails for collision detection since they shouldn't be considered as objects
+            return [];
+            
+            // Original code (now commented out):
+            // return this.trails.map(trail => ({
+            //     position: trail.mesh.position,
+            //     size: trail.size
+            // }));
         } catch (error) {
             console.error('Error getting trails:', error);
             return [];

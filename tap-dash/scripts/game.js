@@ -6,6 +6,7 @@ class Game {
         console.log('Game constructor called');
         this.isRunning = false;
         this.score = 0;
+        this.gameStarted = false; // Flag to track if gameplay has actually started after countdown
         
         // MODIFIED: Better speed progression for more balanced difficulty
         this.speedIncreaseInterval = 15; // Increased from 10 to 15
@@ -255,7 +256,7 @@ class Game {
                 if (!this.isRunning) {
                     console.log('Game not running, attempting to start');
                     this.startGame();
-                } else {
+                } else if (this.gameStarted) { // Only handle taps if game has actually started
                     this.handleTap();
                 }
                 
@@ -299,14 +300,14 @@ class Game {
                     console.log('Space pressed');
                     if (!this.isRunning) {
                         this.startGame();
-                    } else {
+                    } else if (this.gameStarted) { // Only handle jumps if game has actually started
                         this.handleTap();
                     }
                     e.preventDefault(); // Prevent scrolling
                 }
                 
                 // Add left/right movement with arrow keys and A/D
-                if (this.isRunning && this.player) {
+                if (this.isRunning && this.gameStarted && this.player) {
                     if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
                         this.player.moveLeft(true);
                     }
@@ -318,7 +319,7 @@ class Game {
             
             // Add key up event for smoother controls
             document.addEventListener('keyup', (e) => {
-                if (this.isRunning && this.player) {
+                if (this.isRunning && this.gameStarted && this.player) {
                     if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
                         this.player.moveLeft(false);
                     }
@@ -333,14 +334,14 @@ class Game {
             let touchStartTime = 0;
             
             document.addEventListener('touchstart', (e) => {
-                if (this.isRunning && e.touches.length > 0) {
+                if (this.isRunning && this.gameStarted && e.touches.length > 0) {
                     touchStartX = e.touches[0].clientX;
                     touchStartTime = Date.now();
                 }
             }, { passive: true });
             
             document.addEventListener('touchmove', (e) => {
-                if (!this.isRunning || !this.player || e.touches.length === 0) return;
+                if (!this.isRunning || !this.gameStarted || !this.player || e.touches.length === 0) return;
                 
                 const touchCurrentX = e.touches[0].clientX;
                 const deltaX = touchCurrentX - touchStartX;
@@ -364,7 +365,7 @@ class Game {
             }, { passive: true });
             
             document.addEventListener('touchend', (e) => {
-                if (this.isRunning && this.player) {
+                if (this.isRunning && this.gameStarted && this.player) {
                     // Stop movement on touch end
                     this.player.moveLeft(false);
                     this.player.moveRight(false);
@@ -395,8 +396,8 @@ class Game {
     }
     
     handleTap() {
-        if (!this.isRunning) {
-            console.log('Tap ignored - game not running');
+        if (!this.isRunning || !this.gameStarted) {
+            console.log('Tap ignored - game not running or not started yet');
             return;
         }
         
@@ -464,6 +465,15 @@ class Game {
                 console.error('Start screen element not found!');
             }
             
+            // Set running state, but don't start actual gameplay yet
+            this.isRunning = true;
+            
+            // Reset player position and ensure they don't move yet
+            if (this.player) {
+                this.player.reset();
+                this.player.freeze(); // New method to freeze player during countdown
+            }
+            
             // MODIFIED: Add a more visible countdown and instructions
             const countdownEl = document.createElement('div');
             countdownEl.className = 'countdown';
@@ -495,9 +505,17 @@ class Game {
                         uiLayer.removeChild(countdownEl);
                         uiLayer.removeChild(instructionEl);
                         
-                        // Actually start the game after countdown
-                        this.isRunning = true;
-                        console.log('Game is now running:', this.isRunning);
+                        // Now actually start the game mechanics after countdown
+                        this.gameStarted = true;
+                        console.log('Game is now fully running:', this.gameStarted);
+                        
+                        // Unfreeze the player
+                        if (this.player) {
+                            this.player.unfreeze();
+                        }
+                        
+                        // Start obstacle generation once countdown is complete
+                        this.obstacleManager.startGeneratingObstacles();
                         
                         // ADDED: Start continuous trail effect
                         this.trailSystem.startContinuousTrail(this.player);
@@ -508,35 +526,52 @@ class Game {
                 }, 1000);
             } else {
                 console.error('UI layer not found!');
-                this.isRunning = true;
-                
-                // ADDED: Start continuous trail effect
-                this.trailSystem.startContinuousTrail(this.player);
+                // Fallback - start the game after a delay
+                setTimeout(() => {
+                    this.gameStarted = true;
+                    if (this.player) this.player.unfreeze();
+                    this.obstacleManager.startGeneratingObstacles();
+                    this.trailSystem.startContinuousTrail(this.player);
+                }, 3000);
             }
         } catch (error) {
             console.error('Error starting game:', error);
-            // Fallback - just start the game
-            this.isRunning = true;
-            
-            // ADDED: Start continuous trail effect even in fallback mode
-            this.trailSystem.startContinuousTrail(this.player);
+            // Fallback - just start the game after a delay
+            setTimeout(() => {
+                this.gameStarted = true;
+                this.isRunning = true;
+                if (this.player) this.player.unfreeze();
+                this.obstacleManager.startGeneratingObstacles();
+                this.trailSystem.startContinuousTrail(this.player);
+            }, 3000);
         }
     }
     
-    // MODIFIED: Fixed game over and restart logic
+    // MODIFIED: Enhanced game over and restart logic
     gameOver() {
         console.log('Game over');
         this.isRunning = false;
+        this.gameStarted = false;
         
         try {
             // ADDED: Stop continuous trail on game over
             this.trailSystem.stopContinuousTrail();
             
+            // Freeze player
+            if (this.player) {
+                this.player.freeze();
+            }
+            
+            // Stop obstacle generation
+            this.obstacleManager.stopGeneratingObstacles();
+            
+            // Show final score
             const finalScoreElement = document.getElementById('final-score');
             if (finalScoreElement) {
                 finalScoreElement.textContent = Math.floor(this.score);
             }
             
+            // Show game over screen
             const gameOverElement = document.getElementById('game-over');
             if (gameOverElement) {
                 gameOverElement.classList.remove('hidden');
@@ -582,23 +617,19 @@ class Game {
             this.score = 0;
             updateScoreDisplay(this.score);
             
-            // Add a short delay before starting game to ensure UI is updated
-            setTimeout(() => {
-                // Start game
-                this.isRunning = true;
-                
-                // Restart the continuous trail system
-                this.trailSystem.startContinuousTrail(this.player);
-                
-                console.log('Game restarted and running');
-            }, 100);
+            // Start new countdown
+            this.startGame();
         } catch (error) {
             console.error('Error restarting game:', error);
         }
     }
     
     update() {
-        if (!this.isRunning) return;
+        // Always update basic scene elements, even when not running
+        this.updateParticles();
+        this.updateCamera();
+        
+        if (!this.isRunning || !this.gameStarted) return;
         
         try {
             // Update game objects
@@ -606,18 +637,12 @@ class Game {
             this.obstacleManager.update();
             this.trailSystem.update();
             
-            // Animate particles
-            this.updateParticles();
-            
-            // Add subtle camera movements for more dynamic feel
-            this.updateCamera();
-            
-            // MODIFIED: Only check collisions after a grace period (5 points)
-            if (this.score > 5) {
+            // MODIFIED: Improved collision detection with safe zone
+            if (this.score > 5) { // Only start checking collisions after a grace period
                 this.checkCollisions();
             }
             
-            // Increase score
+            // Increase score only when game is running
             this.score += 0.1;
             const roundedScore = Math.floor(this.score);
             updateScoreDisplay(roundedScore);
@@ -698,114 +723,145 @@ class Game {
     
     checkCollisions() {
         try {
-            // Check for collisions with obstacles
+            if (!this.player || !this.obstacleManager) return;
+            
+            // Check collision with each obstacle
             const obstacles = this.obstacleManager.getObstacles();
             for (const obstacle of obstacles) {
-                // MODIFIED: Improved collision detection for better gameplay feel
-                // Only check collision if the obstacle is near enough to the player
-                if (Math.abs(obstacle.position.z - this.player.position.z) < 1.5) {
-                    if (checkCollision(
-                        this.player.position, obstacle.position,
-                        this.player.size, obstacle.size
-                    )) {
-                        console.log("Collision with obstacle detected at positions:", 
-                            this.player.position, obstacle.position);
-                        this.playCollisionEffect(obstacle.position);
+                if (this.detailedCollisionCheck(
+                    this.player.position, obstacle.position,
+                    this.player.size, obstacle.size
+                )) {
+                    console.log("Collision detected at positions:", 
+                        this.player.position, obstacle.position);
+                    
+                    // Calculate exact collision point for effect
+                    const collisionPoint = {
+                        x: (this.player.position.x + obstacle.position.x) / 2,
+                        y: (this.player.position.y + obstacle.position.y) / 2,
+                        z: (this.player.position.z + obstacle.position.z) / 2
+                    };
+                    
+                    // Play enhanced collision effect
+                    this.playEnhancedCollisionEffect(collisionPoint, obstacle.position);
+                    
+                    // Show brief slow-motion effect before game over
+                    this.showSlowMotionEffect(() => {
                         this.gameOver();
-                        return;
-                    }
+                    });
+                    return;
                 }
             }
             
-            // Only check trail collisions if score is high enough
-            // and use a tighter collision box for trails
-            if (this.score > 15) {  // Increased from 5 to 15
-                const trails = this.trailSystem.getTrails();
-                for (const trail of trails) {
-                    // Only check collision if the trail is in front of the player
-                    if (trail.position.z > this.player.position.z - 0.5 && 
-                        trail.position.z < this.player.position.z + 1) {
-                        
-                        // Use a reduced collision size for trails (70% of original)
-                        const reducedSize = {
-                            x: trail.size.x * 0.7,
-                            y: trail.size.y * 0.7,
-                            z: trail.size.z * 0.7
-                        };
-                        
-                        if (checkCollision(
-                            this.player.position, trail.position,
-                            this.player.size, reducedSize
-                        )) {
-                            console.log("Collision with trail detected at positions:", 
-                                this.player.position, trail.position);
-                            this.playCollisionEffect(trail.position);
-                            this.gameOver();
-                            return;
-                        }
-                    }
-                }
-            }
+            // REMOVED: Trail collision detection
+            // Trails are now purely visual effects and not considered as collidable objects
         } catch (error) {
             console.error('Error checking collisions:', error);
         }
     }
-
-    debugCollision(pos1, pos2, isColliding) {
-        // Create debug visualization spheres at collision points
-        const sphere1 = new THREE.Mesh(
-            new THREE.SphereGeometry(0.2, 8, 8),
-            new THREE.MeshBasicMaterial({
-                color: isColliding ? 0xff0000 : 0x00ff00,
-                wireframe: true
-            })
-        );
-        const sphere2 = new THREE.Mesh(
-            new THREE.SphereGeometry(0.2, 8, 8),
-            new THREE.MeshBasicMaterial({
-                color: isColliding ? 0xff0000 : 0x00ff00,
-                wireframe: true
-            })
-        );
+    
+    // ADDED: More detailed collision check with better visualization
+    detailedCollisionCheck(pos1, pos2, size1, size2) {
+        // Calculate collision boundaries
+        const halfWidth1 = size1.x / 2;
+        const halfHeight1 = size1.y / 2;
+        const halfDepth1 = size1.z / 2;
         
-        sphere1.position.set(pos1.x, pos1.y, pos1.z);
-        sphere2.position.set(pos2.x, pos2.y, pos2.z);
+        const halfWidth2 = size2.x / 2;
+        const halfHeight2 = size2.y / 2;
+        const halfDepth2 = size2.z / 2;
         
-        this.scene.add(sphere1);
-        this.scene.add(sphere2);
+        // Check for overlap in all three dimensions
+        const overlapX = Math.abs(pos1.x - pos2.x) < (halfWidth1 + halfWidth2);
+        const overlapY = Math.abs(pos1.y - pos2.y) < (halfHeight1 + halfHeight2);
+        const overlapZ = Math.abs(pos1.z - pos2.z) < (halfDepth1 + halfDepth2);
         
-        // Remove after 2 seconds
-        setTimeout(() => {
-            this.scene.remove(sphere1);
-            this.scene.remove(sphere2);
-        }, 2000);
+        const isColliding = overlapX && overlapY && overlapZ;
+        
+        // For debugging: visualize collision boxes
+        if (isColliding) {
+            this.visualizeCollisionBoxes(pos1, pos2, size1, size2);
+        }
+        
+        return isColliding;
+    }
+    
+    // ADDED: Helper to visualize collision boxes for debugging
+    visualizeCollisionBoxes(pos1, pos2, size1, size2) {
+        try {
+            // Create wireframe boxes to visualize collision boundaries
+            const box1Geo = new THREE.BoxGeometry(size1.x, size1.y, size1.z);
+            const box2Geo = new THREE.BoxGeometry(size2.x, size2.y, size2.z);
+            
+            const wireframeMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff0000,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.7
+            });
+            
+            const box1 = new THREE.Mesh(box1Geo, wireframeMaterial);
+            const box2 = new THREE.Mesh(box2Geo, wireframeMaterial);
+            
+            box1.position.set(pos1.x, pos1.y, pos1.z);
+            box2.position.set(pos2.x, pos2.y, pos2.z);
+            
+            this.scene.add(box1);
+            this.scene.add(box2);
+            
+            // Remove after a short time
+            setTimeout(() => {
+                this.scene.remove(box1);
+                this.scene.remove(box2);
+            }, 200);
+        } catch (error) {
+            console.error('Error visualizing collision boxes:', error);
+        }
     }
 
-
-    playCollisionEffect(position) {
+    // ADDED: New enhanced collision effect
+    playEnhancedCollisionEffect(collisionPoint, obstaclePosition) {
         try {
-            // Create explosion-like particles at collision point
-            const particleCount = 30;
+            // 1. Create explosion particles at collision point
+            const particleCount = 50; // Increased from 30
             const particles = [];
             
+            // Create particle colors
+            const particleColors = [
+                new THREE.Color(0xff5555), // red
+                new THREE.Color(0xff8855), // orange
+                new THREE.Color(0xffff55), // yellow
+                new THREE.Color(0xffffff)  // white
+            ];
+            
             for (let i = 0; i < particleCount; i++) {
+                // Choose random color from palette
+                const color = particleColors[Math.floor(Math.random() * particleColors.length)];
+                
+                // Create particle with random size
+                const size = 0.05 + Math.random() * 0.15;
                 const particle = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.1, 8, 8),
+                    new THREE.SphereGeometry(size, 8, 8),
                     new THREE.MeshBasicMaterial({
-                        color: 0xff5555,
+                        color: color,
                         transparent: true,
-                        opacity: 0.8
+                        opacity: 0.9,
+                        emissive: color
                     })
                 );
                 
-                // Position at collision point
-                particle.position.copy(position);
+                // Position at collision point with slight random offset
+                particle.position.set(
+                    collisionPoint.x + (Math.random() - 0.5) * 0.2,
+                    collisionPoint.y + (Math.random() - 0.5) * 0.2,
+                    collisionPoint.z + (Math.random() - 0.5) * 0.2
+                );
                 
-                // Random velocity
+                // Random velocity with more energy
                 particle.velocity = new THREE.Vector3(
-                    (Math.random() - 0.5) * 0.2,
-                    Math.random() * 0.2,
-                    (Math.random() - 0.5) * 0.2
+                    (Math.random() - 0.5) * 0.4,
+                    Math.random() * 0.4,
+                    (Math.random() - 0.5) * 0.4
                 );
                 
                 // Add to scene
@@ -815,16 +871,60 @@ class Game {
                 // Remove after animation
                 setTimeout(() => {
                     this.scene.remove(particle);
-                }, 1000);
+                }, 1500);
             }
+            
+            // 2. Create a flash at the collision point
+            const flashLight = new THREE.PointLight(0xffaa00, 5, 10);
+            flashLight.position.copy(collisionPoint);
+            this.scene.add(flashLight);
+            
+            // Flash animation
+            let flashIntensity = 5;
+            const animateFlash = () => {
+                flashIntensity *= 0.9;
+                flashLight.intensity = flashIntensity;
+                
+                if (flashIntensity > 0.1) {
+                    requestAnimationFrame(animateFlash);
+                } else {
+                    this.scene.remove(flashLight);
+                }
+            };
+            
+            animateFlash();
+            
+            // 3. Create a shock wave ring
+            const ringGeometry = new THREE.RingGeometry(0.2, 0.4, 32);
+            const ringMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffaa00,
+                transparent: true,
+                opacity: 0.9,
+                side: THREE.DoubleSide
+            });
+            
+            const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+            ring.position.copy(collisionPoint);
+            
+            // Orient ring to face camera
+            ring.lookAt(this.camera.position);
+            this.scene.add(ring);
             
             // Animate particles
             const animateParticles = () => {
                 for (const particle of particles) {
+                    // Move according to velocity
                     particle.position.add(particle.velocity);
-                    particle.velocity.y -= 0.01; // gravity
-                    particle.material.opacity -= 0.02;
-                    particle.scale.multiplyScalar(0.97);
+                    
+                    // Apply gravity and drag
+                    particle.velocity.y -= 0.015; // gravity
+                    particle.velocity.multiplyScalar(0.98); // drag
+                    
+                    // Fade out
+                    particle.material.opacity -= 0.01;
+                    
+                    // Shrink slightly
+                    particle.scale.multiplyScalar(0.99);
                 }
                 
                 if (particles[0].material.opacity > 0) {
@@ -832,33 +932,129 @@ class Game {
                 }
             };
             
-            animateParticles();
+            // Animate shock wave ring
+            let ringScale = 1;
+            let ringOpacity = 0.9;
             
-            // Flash screen red briefly
+            const animateRing = () => {
+                ringScale += 0.2;
+                ringOpacity -= 0.05;
+                
+                ring.scale.set(ringScale, ringScale, ringScale);
+                ringMaterial.opacity = ringOpacity;
+                
+                if (ringOpacity > 0) {
+                    requestAnimationFrame(animateRing);
+                } else {
+                    this.scene.remove(ring);
+                }
+            };
+            
+            animateParticles();
+            animateRing();
+            
+            // 4. Create camera shake effect
+            const originalCameraPos = {
+                x: this.camera.position.x,
+                y: this.camera.position.y,
+                z: this.camera.position.z
+            };
+            
+            const shakeCamera = () => {
+                const shakeAmount = 0.2;
+                this.camera.position.set(
+                    originalCameraPos.x + (Math.random() - 0.5) * shakeAmount,
+                    originalCameraPos.y + (Math.random() - 0.5) * shakeAmount,
+                    originalCameraPos.z + (Math.random() - 0.5) * shakeAmount
+                );
+            };
+            
+            // Apply shake 10 times over 500ms
+            let shakeCount = 0;
+            const shakeInterval = setInterval(() => {
+                shakeCamera();
+                shakeCount++;
+                
+                if (shakeCount >= 10) {
+                    clearInterval(shakeInterval);
+                    // Reset camera position
+                    this.camera.position.set(
+                        originalCameraPos.x,
+                        originalCameraPos.y,
+                        originalCameraPos.z
+                    );
+                }
+            }, 50);
+            
+            // 5. Flash screen red with pulsing effect
             const flash = document.createElement('div');
             flash.style.position = 'absolute';
             flash.style.top = '0';
             flash.style.left = '0';
             flash.style.width = '100%';
             flash.style.height = '100%';
-            flash.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+            flash.style.backgroundColor = 'rgba(255, 60, 60, 0.5)';
             flash.style.pointerEvents = 'none';
             flash.style.zIndex = '100';
             document.body.appendChild(flash);
             
-            // Fade out and remove
-            setTimeout(() => {
-                flash.style.transition = 'opacity 0.3s';
-                flash.style.opacity = '0';
-                setTimeout(() => {
-                    document.body.removeChild(flash);
-                }, 300);
-            }, 100);
+            // Pulsing animation before fade
+            let pulseCount = 0;
+            const pulseInterval = setInterval(() => {
+                flash.style.opacity = 0.3 + Math.sin(pulseCount * 0.5) * 0.2;
+                pulseCount++;
+                
+                if (pulseCount >= 8) {
+                    clearInterval(pulseInterval);
+                    
+                    // Fade out and remove
+                    flash.style.transition = 'opacity 0.5s';
+                    flash.style.opacity = '0';
+                    setTimeout(() => {
+                        document.body.removeChild(flash);
+                    }, 500);
+                }
+            }, 60);
+            
         } catch (error) {
-            console.error('Error playing collision effect:', error);
+            console.error('Error playing enhanced collision effect:', error);
         }
     }
     
+    // ADDED: Slow motion effect on collision
+    showSlowMotionEffect(callback) {
+        try {
+            // Store original speeds
+            const originalObstacleSpeed = this.obstacleManager.obstacleSpeed;
+            const originalTrailSpeed = this.trailSystem.trailSpeed;
+            
+            // Slow down game
+            this.obstacleManager.obstacleSpeed *= 0.2;
+            this.trailSystem.trailSpeed *= 0.2;
+            
+            // Slow down player animation
+            if (this.player) {
+                this.player.setSlowMotion(true);
+            }
+            
+            // Return to normal speed after delay and execute callback
+            setTimeout(() => {
+                this.obstacleManager.obstacleSpeed = originalObstacleSpeed;
+                this.trailSystem.trailSpeed = originalTrailSpeed;
+                
+                if (this.player) {
+                    this.player.setSlowMotion(false);
+                }
+                
+                if (callback) callback();
+            }, 800);
+        } catch (error) {
+            console.error('Error showing slow motion effect:', error);
+            // Ensure callback still runs even if effect fails
+            if (callback) callback();
+        }
+    }
+
     playSpeedUpEffect() {
         try {
             // Flash screen blue briefly
@@ -899,7 +1095,7 @@ class Game {
             
             const collectible = new THREE.Mesh(geometry, material);
             
-            // Position it randomly
+            // Position it randomly but always ahead of player
             collectible.position.set(
                 (Math.random() - 0.5) * 3,  // x
                 1 + Math.random() * 1.5,    // y
@@ -935,7 +1131,7 @@ class Game {
                     collectible.position.y += Math.sin(Date.now() * 0.005) * 0.01;
                     
                     // Check if collected
-                    if (checkCollision(
+                    if (this.detailedCollisionCheck(
                         this.player.position, collectible.position,
                         this.player.size, collectibleObj.size
                     )) {
