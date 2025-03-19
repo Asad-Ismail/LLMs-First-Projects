@@ -59,9 +59,12 @@ body, html {
 }
 
 h1 {
-    font-size: 48px;
+    font-size: 64px;
     margin-bottom: 20px;
     color: #ff5555;
+    text-shadow: 0 0 15px rgba(255, 85, 85, 0.7),
+                 0 0 30px rgba(255, 85, 85, 0.4);
+    animation: pulse 2s infinite;
 }
 
 h2 {
@@ -72,25 +75,51 @@ h2 {
 
 p {
     font-size: 24px;
-    margin-bottom: 30px;
+    margin-bottom: 15px;
+}
+
+.instructions {
+    font-size: 18px;
+    margin-bottom: 10px;
+    color: #88ccff;
+    text-shadow: 0 0 5px rgba(136, 204, 255, 0.7);
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
 }
 
 button {
     background-color: #ff5555;
     color: white;
     border: none;
-    padding: 15px 30px;
-    font-size: 20px;
+    padding: 18px 40px;
+    font-size: 24px;
     border-radius: 30px;
     cursor: pointer;
-    transition: transform 0.1s, background-color 0.3s;
+    transition: transform 0.1s, background-color 0.3s, box-shadow 0.3s;
     pointer-events: auto;
+    margin-top: 20px;
+    box-shadow: 0 0 20px rgba(255, 85, 85, 0.5),
+                inset 0 0 10px rgba(255, 255, 255, 0.3);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    animation: float 3s infinite ease-in-out;
 }
 
 button:hover {
     background-color: #ff7777;
+    box-shadow: 0 0 30px rgba(255, 85, 85, 0.8),
+                inset 0 0 15px rgba(255, 255, 255, 0.5);
 }
 
 button:active {
     transform: scale(0.95);
+}
+
+@keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
 }
