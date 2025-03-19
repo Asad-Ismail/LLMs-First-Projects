@@ -3,6 +3,7 @@
  */
 class Game {
     constructor() {
+        console.log('Game constructor called');
         this.isRunning = false;
         this.score = 0;
         this.speedIncreaseInterval = 10; // Increase speed every 10 points
@@ -24,13 +25,15 @@ class Game {
         
         // Start animation loop
         this.animate();
+        
+        // Make the game instance globally accessible for debugging
+        window.gameInstance = this;
+        
+        console.log('Game initialization complete');
     }
     
     setupScene() {
-        // Performance monitoring (uncomment if needed)
-        // this.stats = new Stats();
-        // document.body.appendChild(this.stats.dom);
-        
+        console.log('Setting up scene');
         // Create scene with fog for depth effect
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x111122);
@@ -51,7 +54,16 @@ class Game {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.shadowMap.enabled = true;
-        document.getElementById('game-container').prepend(this.renderer.domElement);
+        
+        // Add the canvas to the DOM
+        const gameContainer = document.getElementById('game-container');
+        if (gameContainer) {
+            gameContainer.prepend(this.renderer.domElement);
+            console.log('Added canvas to game container');
+        } else {
+            console.error('Game container not found!');
+            document.body.prepend(this.renderer.domElement);
+        }
         
         // Add visually interesting ground
         const groundSize = 12;
@@ -98,12 +110,11 @@ class Game {
         const particleCount = 200;
         const posArray = new Float32Array(particleCount * 3);
         
-        for(let i = 0; i < particleCount * 3; i++) {
+        for(let i = 0; i < particleCount * 3; i += 3) {
             // Random positions in a defined space around the player
             posArray[i] = (Math.random() - 0.5) * 10;
             posArray[i+1] = Math.random() * 5;
             posArray[i+2] = (Math.random() - 0.5) * 40 - 15; // Mostly ahead of player
-            i += 2;
         }
         
         particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
@@ -188,46 +199,87 @@ class Game {
     }
     
     setupControls() {
-        // Touch/click to jump or start game
-        window.addEventListener('mousedown', (e) => {
-            if (!this.isRunning && document.getElementById('start-screen').classList.contains('overlay') && 
-                !document.getElementById('start-screen').classList.contains('hidden')) {
+        console.log('Setting up controls');
+        
+        // Simplified interaction handler
+        const handleInteraction = (e) => {
+            console.log('Interaction detected', e.type);
+            
+            // If the game is not running, start it
+            if (!this.isRunning) {
+                console.log('Game not running, attempting to start');
                 this.startGame();
             } else {
                 this.handleTap();
             }
-        });
+            
+            // Prevent default behavior to be safe
+            e.preventDefault();
+        };
         
-        window.addEventListener('touchstart', (e) => {
-            if (!this.isRunning && document.getElementById('start-screen').classList.contains('overlay') && 
-                !document.getElementById('start-screen').classList.contains('hidden')) {
+        // Add event listeners to document for better capture
+        document.addEventListener('mousedown', handleInteraction);
+        document.addEventListener('touchstart', handleInteraction, { passive: false });
+        
+        // Make start button more robust
+        const startButton = document.getElementById('start-button');
+        if (startButton) {
+            console.log('Start button found, adding click handler');
+            startButton.addEventListener('click', (e) => {
+                console.log('Start button clicked');
                 this.startGame();
-            } else {
-                this.handleTap();
-            }
-        });
+                e.stopPropagation(); // Prevent event from bubbling
+            });
+        } else {
+            console.error('Start button not found!');
+        }
         
-        // Start game button (still needed for explicit button clicks)
-        document.getElementById('start-button').addEventListener('click', () => this.startGame());
+        // Make restart button more robust
+        const restartButton = document.getElementById('restart-button');
+        if (restartButton) {
+            console.log('Restart button found, adding click handler');
+            restartButton.addEventListener('click', (e) => {
+                console.log('Restart button clicked');
+                this.restartGame();
+                e.stopPropagation(); // Prevent event from bubbling
+            });
+        } else {
+            console.error('Restart button not found!');
+        }
         
-        // Restart game button
-        document.getElementById('restart-button').addEventListener('click', () => this.restartGame());
-        
-        // Add keyboard controls (spacebar to jump or start game)
-        window.addEventListener('keydown', (e) => {
+        // Add keyboard controls with simplified logic
+        document.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
-                if (!this.isRunning && document.getElementById('start-screen').classList.contains('overlay') && 
-                    !document.getElementById('start-screen').classList.contains('hidden')) {
+                console.log('Space pressed');
+                if (!this.isRunning) {
                     this.startGame();
                 } else {
                     this.handleTap();
                 }
+                e.preventDefault(); // Prevent scrolling
             }
         });
+        
+        // Add a direct click handler to the start screen
+        const startScreen = document.getElementById('start-screen');
+        if (startScreen) {
+            console.log('Start screen found, adding click handler');
+            startScreen.addEventListener('click', (e) => {
+                console.log('Start screen clicked');
+                if (!this.isRunning) {
+                    this.startGame();
+                }
+            });
+        }
     }
     
     handleTap() {
-        if (!this.isRunning) return;
+        if (!this.isRunning) {
+            console.log('Tap ignored - game not running');
+            return;
+        }
+        
+        console.log('Handling tap while game is running');
         
         // Attempt to jump
         const jumped = this.player.jump();
@@ -239,35 +291,67 @@ class Game {
     }
     
     startGame() {
-        document.getElementById('start-screen').classList.add('hidden');
+        console.log('Starting game');
+        
+        // Ensure start screen is hidden
+        const startScreen = document.getElementById('start-screen');
+        if (startScreen) {
+            startScreen.classList.add('hidden');
+        } else {
+            console.error('Start screen element not found!');
+        }
+        
         this.isRunning = true;
+        console.log('Game is now running:', this.isRunning);
         
         // Add a short countdown before starting
         const countdownEl = document.createElement('div');
         countdownEl.className = 'countdown';
         countdownEl.textContent = '3';
-        document.getElementById('ui-layer').appendChild(countdownEl);
         
-        let count = 3;
-        const countdown = setInterval(() => {
-            count--;
-            if (count > 0) {
-                countdownEl.textContent = count;
-            } else {
-                clearInterval(countdown);
-                document.getElementById('ui-layer').removeChild(countdownEl);
-            }
-        }, 1000);
+        const uiLayer = document.getElementById('ui-layer');
+        if (uiLayer) {
+            uiLayer.appendChild(countdownEl);
+            
+            let count = 3;
+            const countdown = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownEl.textContent = count;
+                } else {
+                    clearInterval(countdown);
+                    uiLayer.removeChild(countdownEl);
+                }
+            }, 1000);
+        } else {
+            console.error('UI layer not found!');
+        }
     }
     
     gameOver() {
+        console.log('Game over');
         this.isRunning = false;
-        document.getElementById('final-score').textContent = Math.floor(this.score);
-        document.getElementById('game-over').classList.remove('hidden');
+        
+        const finalScoreElement = document.getElementById('final-score');
+        if (finalScoreElement) {
+            finalScoreElement.textContent = Math.floor(this.score);
+        }
+        
+        const gameOverElement = document.getElementById('game-over');
+        if (gameOverElement) {
+            gameOverElement.classList.remove('hidden');
+        } else {
+            console.error('Game over element not found!');
+        }
     }
     
     restartGame() {
-        document.getElementById('game-over').classList.add('hidden');
+        console.log('Restarting game');
+        
+        const gameOverElement = document.getElementById('game-over');
+        if (gameOverElement) {
+            gameOverElement.classList.add('hidden');
+        }
         
         // Reset game objects
         this.player.reset();
@@ -280,6 +364,7 @@ class Game {
         
         // Start game
         this.isRunning = true;
+        console.log('Game restarted and running');
     }
     
     update() {
@@ -361,9 +446,6 @@ class Game {
         if (Math.random() < 0.002) {
             this.spawnCollectible();
         }
-        
-        // Update Stats if enabled
-        // if (this.stats) this.stats.update();
     }
     
     updateCamera() {

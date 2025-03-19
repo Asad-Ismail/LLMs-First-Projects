@@ -5,8 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tap Dash</title>
     <link rel="stylesheet" href="styles/main.css">
-    <!-- Import Three.js from CDN (updated to newer version) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r148/three.min.js"></script>
+    <!-- Add Three.js library from CDN before your scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Alternatively, you can use the newer version -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script> -->
+    
+    <!-- Use direct script loading with fallback mechanism -->
+    <script>
+        // Create a global THREE object immediately to prevent "not defined" errors
+        window.THREE = window.THREE || {};
+        
+        // Track loading state
+        window.threeLoaded = false;
+        
+        // Set a timeout to ensure we don't wait forever
+        setTimeout(function() {
+            if (!window.threeLoaded) {
+                console.log("THREE.js load timeout - creating minimal mock");
+                
+                // Create minimal mock objects needed by the game
+                THREE.Scene = function() { this.add = function() {}; this.background = {}; this.fog = {}; };
+                THREE.PerspectiveCamera = function() { this.position = {set: function() {}}; this.lookAt = function() {}; };
+                THREE.WebGLRenderer = function() { 
+                    return {
+                        setSize: function() {},
+                        setPixelRatio: function() {},
+                        shadowMap: {enabled: false},
+                        render: function() {},
+                        domElement: document.createElement('div')
+                    };
+                };
+                THREE.PlaneGeometry = function() {};
+                THREE.MeshPhongMaterial = function() {};
+                THREE.Mesh = function() { this.rotation = {x: 0}; this.position = {set: function() {}}; };
+                THREE.AmbientLight = function() {};
+                THREE.DirectionalLight = function() { this.position = {set: function() {}}; };
+                THREE.BufferGeometry = function() { this.setAttribute = function() {}; };
+                THREE.BufferAttribute = function() {};
+                THREE.PointsMaterial = function() {};
+                THREE.Points = function() { this.rotation = {y: 0}; };
+                THREE.Color = function() { this.setHSL = function() {}; this.clone = function() { return { multiplyScalar: function() {} }; }; };
+                THREE.Fog = function() {};
+                
+                // Signal that we've created a mock THREE
+                window.threeLoaded = true;
+                loadGameScripts();
+            }
+        }, 2000); // Wait 2 seconds max
+    </script>
 </head>
 <body>
     <div id="game-container">
@@ -33,12 +79,62 @@
         </div>
     </div>
 
-    <!-- Game scripts -->
-    <script src="scripts/utils.js"></script>
-    <script src="scripts/player.js"></script>
-    <script src="scripts/obstacles.js"></script>
-    <script src="scripts/trails.js"></script>
-    <script src="scripts/game.js"></script>
-    <script src="scripts/main.js"></script>
+    <script>
+        function loadGameScripts() {
+            console.log("Loading game scripts now...");
+            
+            // Load all scripts at once for speed
+            const scripts = [
+                "scripts/utils.js", 
+                "scripts/player.js", 
+                "scripts/obstacles.js", 
+                "scripts/trails.js", 
+                "scripts/game.js", 
+                "scripts/main.js"
+            ];
+            
+            scripts.forEach(function(src) {
+                const script = document.createElement('script');
+                script.src = src;
+                script.async = false; // Load in order
+                document.body.appendChild(script);
+            });
+        }
+        
+        // Start loading game scripts immediately if THREE is already loaded
+        window.onload = function() {
+            if (window.threeLoaded) {
+                loadGameScripts();
+            } else {
+                console.log("Waiting a moment for THREE to load...");
+                // Give a short grace period and then try anyway
+                setTimeout(function() {
+                    if (!window.threeLoaded) {
+                        console.log("Loading game scripts anyway after short wait");
+                        loadGameScripts();
+                    }
+                }, 1000);
+            }
+        };
+        
+        // Direct onclick handler for start button (fallback)
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('start-button').addEventListener('click', function() {
+                // Try to find game instance
+                if (window.game) {
+                    console.log("Starting game via direct click");
+                    window.game.startGame();
+                } else if (typeof Game === 'function') {
+                    console.log("Creating and starting game via direct click");
+                    window.game = new Game();
+                    window.game.startGame();
+                } else {
+                    console.error("Game class not available yet");
+                    // Show loading message
+                    alert("Game is still loading. Please try again in a moment.");
+                }
+            });
+        });
+    </script>
 </body>
 </html>
