@@ -1,0 +1,36 @@
+
+Game Overview
+"Tap Dash" is a one-touch runner where you control a colorful character that automatically moves forward. Tap anywhere on screen to jump over obstacles and collect glowing orbs. The unique twist: each tap creates a colorful trail that becomes part of the obstacle course for future runs!
+Why This Works
+* One-Tap Controls: Just tap anywhere to jump - that's it!
+* Self-Explanatory: See character running toward obstacle = tap to jump
+* Instant Understanding: No tutorial needed - human instinct knows to jump over obstacles
+* Visual Feedback: Your colorful trails build up over time creating a unique level
+Technical Implementation
+* Engine: ThreeJS with minimal physics
+* Size: Under 500KB total
+* Controls: Single tap mechanic works identically on all devices
+What Makes It Unique
+The trails you leave behind with each jump become part of the course for your next run! This creates a constantly evolving, personalized level without any complex mechanics.
+Visual Style
+* Bright, bold colors with simple shapes
+* Character is a glowing sphere that leaves trails when jumping
+* Clean, minimal environment with high contrast
+This game requires zero explanation - people will immediately understand "tap to jump over things" when they see the character and obstacles. The unique twist of your trails becoming obstacles adds depth without complexity.
+
+
+
+tap-dash/
+├── index.html         # Main HTML file
+├── styles/
+│   └── main.css       # Basic styling
+├── scripts/
+│   ├── main.js        # Main game initialization
+│   ├── game.js        # Game logic controller
+│   ├── player.js      # Player object and controls
+│   ├── obstacles.js   # Obstacle generation and management
+│   ├── trails.js      # Trail system for player jumps
+│   └── utils.js       # Utility functions
+└── assets/
+    ├── sounds/        # Game sounds (jump, collect, etc.)
+    └── images/        # Any necessary images

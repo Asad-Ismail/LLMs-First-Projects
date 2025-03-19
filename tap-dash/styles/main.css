@@ -1,0 +1,96 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body, html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    touch-action: manipulation; /* Prevents double-tap zoom on mobile */
+}
+
+#game-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: #111;
+}
+
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Allow clicks to pass through to the game */
+    z-index: 10;
+}
+
+#score {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    text-align: center;
+    pointer-events: auto; /* Make overlays clickable */
+}
+
+.hidden {
+    display: none;
+}
+
+h1 {
+    font-size: 48px;
+    margin-bottom: 20px;
+    color: #ff5555;
+}
+
+h2 {
+    font-size: 36px;
+    margin-bottom: 15px;
+    color: #ff5555;
+}
+
+p {
+    font-size: 24px;
+    margin-bottom: 30px;
+}
+
+button {
+    background-color: #ff5555;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 20px;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: transform 0.1s, background-color 0.3s;
+    pointer-events: auto;
+}
+
+button:hover {
+    background-color: #ff7777;
+}
+
+button:active {
+    transform: scale(0.95);
+}
