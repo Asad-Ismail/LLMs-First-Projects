@@ -66,14 +66,19 @@ class TrailSystem {
             // MODIFIED: Create a particle-based fire trail instead of solid object
             // We'll create a cluster of particles and add a light
             
+            // FIXED: Create a fixed position directly behind the player
+            // Clone the position to avoid modifying the original
+            const trailPos = new THREE.Vector3().copy(position);
+            // Always place the trail behind the player (negative z direction)
+            trailPos.z -= 0.2;
+            
             // Create a point light at the trail position for glow effect
             const trailLight = new THREE.PointLight(trailColor, 1.5, 3);
-            trailLight.position.copy(position);
-            trailLight.position.z -= 0.2; // Position slightly behind player
+            trailLight.position.copy(trailPos);
             this.scene.add(trailLight);
             
             // Create a trail object to track the position (but no visible mesh)
-            const trailPosition = new THREE.Vector3(position.x, position.y, position.z - 0.2);
+            const trailPosition = new THREE.Vector3().copy(trailPos);
             
             // Add to trails array - instead of a mesh, we'll track the light and position
             this.trails.push({
@@ -262,13 +267,22 @@ class TrailSystem {
         
         this.continuousTrail = true;
         this.trailInterval = setInterval(() => {
-            // Only create continuous trail if player is moving
+            // FIXED: Check if player is frozen before creating trails
+            if (player.frozen) return;
+            
+            // Only create continuous trail if player is moving or the game is actually running
             if ((player.isJumping || Math.abs(player.velocity.x) > 0.05) && 
-                Date.now() - this.lastTrailTime > this.trailDelay &&
-                !player.frozen) { // Don't create trails when player is frozen
+                Date.now() - this.lastTrailTime > this.trailDelay) {
+                
+                // IMPROVED: Add a slight position offset for the trail creation
+                const trailPosition = {
+                    x: player.position.x,
+                    y: player.position.y,
+                    z: player.position.z
+                };
                 
                 // Create a smaller trail when moving horizontally vs jumping
-                const trail = this.createTrail(player.position, 'player');
+                const trail = this.createTrail(trailPosition, 'player');
                 
                 // Make trail size dependent on movement type
                 if (trail && !player.isJumping && Math.abs(player.velocity.x) > 0.05) {
@@ -301,14 +315,18 @@ class TrailSystem {
                 
                 // Gradually reduce light intensity as trail ages
                 if (trail.light) {
-                    trail.light.intensity = Math.max(0, 1.5 * (1 - trail.lifetime / trail.maxLifetime));
+                    const fadeRatio = 1 - (trail.lifetime / trail.maxLifetime);
+                    trail.light.intensity = 1.5 * fadeRatio;
                 }
                 
                 // Move trail backward with game speed
                 if (trail.position) {
+                    // MODIFIED: Smoother movement for trailing effects
                     trail.position.z += this.trailSpeed;
+                    
+                    // Update light position to match
                     if (trail.light) {
-                        trail.light.position.z = trail.position.z;
+                        trail.light.position.copy(trail.position);
                     }
                 }
                 
@@ -352,7 +370,9 @@ class TrailSystem {
         try {
             // Remove all trails
             for (const trail of this.trails) {
-                this.scene.remove(trail.light);
+                if (trail.light) {
+                    this.scene.remove(trail.light);
+                }
             }
             this.trails = [];
             
@@ -361,6 +381,26 @@ class TrailSystem {
             
             // Reset last color
             this.lastColorIndex = -1;
+            
+            // ADDED: Find and remove any remaining fire particles
+            const objectsToRemove = [];
+            this.scene.traverse(object => {
+                // Find small spheres with emissive materials (likely our fire particles)
+                if (object.geometry && 
+                    object.geometry.type === 'SphereGeometry' && 
+                    object.geometry.parameters.radius < 0.2 &&
+                    object.material &&
+                    (object.material.emissive || object.material.transparent)) {
+                    objectsToRemove.push(object);
+                }
+            });
+            
+            // Remove all identified particles
+            for (const object of objectsToRemove) {
+                this.scene.remove(object);
+            }
+            
+            console.log('Trail system reset, removed all trails and particles');
         } catch (error) {
             console.error('Error resetting trails:', error);
         }

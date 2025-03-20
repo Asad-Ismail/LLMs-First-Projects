@@ -474,6 +474,12 @@ class Game {
                 this.player.freeze(); // New method to freeze player during countdown
             }
             
+            // ADDED: Make sure trails are reset and disabled during countdown
+            if (this.trailSystem) {
+                this.trailSystem.reset();
+                this.trailSystem.enableTrails(true);  // Enable trails but don't start continuous effect yet
+            }
+            
             // MODIFIED: Add a more visible countdown and instructions
             const countdownEl = document.createElement('div');
             countdownEl.className = 'countdown';
@@ -517,8 +523,10 @@ class Game {
                         // Start obstacle generation once countdown is complete
                         this.obstacleManager.startGeneratingObstacles();
                         
-                        // ADDED: Start continuous trail effect
-                        this.trailSystem.startContinuousTrail(this.player);
+                        // MODIFIED: Start continuous trail effect only after countdown
+                        if (this.trailSystem) {
+                            this.trailSystem.startContinuousTrail(this.player);
+                        }
                         
                         // Play a "go" effect
                         this.playStartEffect();
@@ -531,7 +539,11 @@ class Game {
                     this.gameStarted = true;
                     if (this.player) this.player.unfreeze();
                     this.obstacleManager.startGeneratingObstacles();
-                    this.trailSystem.startContinuousTrail(this.player);
+                    
+                    // Start trail system with delay
+                    if (this.trailSystem) {
+                        this.trailSystem.startContinuousTrail(this.player);
+                    }
                 }, 3000);
             }
         } catch (error) {
@@ -542,7 +554,9 @@ class Game {
                 this.isRunning = true;
                 if (this.player) this.player.unfreeze();
                 this.obstacleManager.startGeneratingObstacles();
-                this.trailSystem.startContinuousTrail(this.player);
+                if (this.trailSystem) {
+                    this.trailSystem.startContinuousTrail(this.player);
+                }
             }, 3000);
         }
     }
@@ -628,6 +642,12 @@ class Game {
         // Always update basic scene elements, even when not running
         this.updateParticles();
         this.updateCamera();
+        
+        // ADDED: Update player's glow positions during countdown
+        if (this.isRunning && !this.gameStarted && this.player) {
+            // During countdown, make sure glow positions are always correct
+            this.player.updateGlowPositions();
+        }
         
         if (!this.isRunning || !this.gameStarted) return;
         

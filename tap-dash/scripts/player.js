@@ -35,6 +35,9 @@ class Player {
     freeze() {
         this.frozen = true;
         this.velocity = { x: 0, y: 0, z: 0 };
+        
+        // ADDED: Update glow positions when freezing to ensure correct placement
+        this.updateGlowPositions();
     }
     
     unfreeze() {
@@ -327,11 +330,15 @@ class Player {
             // Create an outer glow effect using a point light
             this.glow = new THREE.PointLight(0xffcc33, 2.0, 3.0);
             this.glow.position.copy(this.position);
+            // FIXED: Position the glow slightly behind the player (not under it)
+            this.glow.position.z -= 0.2;
             this.scene.add(this.glow);
             
             // Add a soft ambient light attached to the player
             this.ambientGlow = new THREE.PointLight(0xffaa22, 0.8, 5.0);
             this.ambientGlow.position.copy(this.position);
+            // FIXED: Position ambient glow correctly
+            this.ambientGlow.position.z -= 0.1;
             this.scene.add(this.ambientGlow);
             
             // Pulsating effect for the glow
@@ -512,13 +519,20 @@ class Player {
             }
             
             // Update player mesh position
-            this.mesh.position.set(this.position.x, this.position.y, this.position.z);
+            if (this.mesh) {
+                this.mesh.position.copy(this.position);
+            }
             
             // Update glow light position and effects
             if (this.glow) {
-                this.glow.position.copy(this.position);
+                // FIXED: Properly position glow behind the player
+                this.glow.position.set(
+                    this.position.x,
+                    this.position.y,
+                    this.position.z - 0.2 // Always behind player
+                );
                 
-                // MODIFIED: Dynamic fire-like glow pulsing effect
+                // Pulsing effect
                 this.glowIntensity += this.glowDirection;
                 if (this.glowIntensity > this.glowMax) {
                     this.glowDirection = -0.05;
@@ -526,32 +540,22 @@ class Player {
                     this.glowDirection = 0.05;
                 }
                 this.glow.intensity = this.glowIntensity;
-                
-                // Slightly randomize the light color for flickering fire effect
-                if (Math.random() > 0.7) {
-                    const hue = 0.05 + Math.random() * 0.1; // Orange-yellow range
-                    this.glow.color.setHSL(hue, 0.9, 0.6);
-                }
             }
             
             // Update secondary light
             if (this.ambientGlow) {
-                this.ambientGlow.position.copy(this.position);
-                this.ambientGlow.position.y -= 0.1; // Position slightly below for better visual effect
+                // FIXED: Position ambient glow properly
+                this.ambientGlow.position.set(
+                    this.position.x,
+                    this.position.y - 0.1, // Slightly below
+                    this.position.z - 0.1  // Slightly behind
+                );
                 
-                // MODIFIED: Flicker the secondary light like a flame
+                // Flicker effect
                 if (Math.random() > 0.5) {
                     const flickerIntensity = 0.8 + Math.random() * 0.4;
                     this.ambientGlow.intensity = flickerIntensity;
                 }
-                
-                // ADDED: Dynamic color based on movement
-                const ambientHue = 0.08 + dynamicFactor * 0.03; // Shifts toward yellow with speed
-                this.ambientGlow.color.setHSL(
-                    Math.min(0.15, ambientHue),
-                    0.9,
-                    0.5 + dynamicFactor * 0.2
-                );
             }
             
             // Dynamic shell glow based on movement
@@ -588,6 +592,26 @@ class Player {
             }
         } catch(error) {
             console.error("Error in player reset:", error);
+        }
+    }
+
+    // Special method to update light positions even when frozen
+    updateGlowPositions() {
+        // This function ensures glow positions are correct even when player is frozen (during countdown)
+        if (this.glow) {
+            this.glow.position.set(
+                this.position.x,
+                this.position.y,
+                this.position.z - 0.2 // Always behind player
+            );
+        }
+        
+        if (this.ambientGlow) {
+            this.ambientGlow.position.set(
+                this.position.x,
+                this.position.y - 0.1, // Slightly below
+                this.position.z - 0.1  // Slightly behind
+            );
         }
     }
 }
