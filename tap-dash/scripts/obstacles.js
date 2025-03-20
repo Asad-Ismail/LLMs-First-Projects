@@ -127,10 +127,10 @@ class ObstacleManager {
             light.position.set(0, height / 2, 0);
             mesh.add(light);
             
-            // MODIFIED: Position at spawn distance with lateral variation
+            // MODIFIED: Position at spawn distance with lateral variation and adjust for ground level (0.5)
             mesh.position.set(
                 lateralPosition, 
-                height / 2, 
+                height / 2 + 0.5, // CHANGED: Add 0.5 to position obstacles properly relative to ground level
                 -this.spawnDistance
             );
             

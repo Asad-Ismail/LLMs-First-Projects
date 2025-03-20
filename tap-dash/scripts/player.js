@@ -39,6 +39,15 @@ class Player {
     
     unfreeze() {
         this.frozen = false;
+        
+        // Ensure player is not below ground level when unfrozen
+        if (this.position.y < 0.5) {
+            this.position.y = 0.5;
+            // Also update mesh position
+            if (this.mesh) {
+                this.mesh.position.y = 0.5;
+            }
+        }
     }
     
     // ADDED: Method for slow motion effect
@@ -180,33 +189,33 @@ class Player {
             // MODIFIED: Create a more vibrant and exciting player model with golden-orange theme
             
             // Core sphere (inner bright glow)
-            const coreGeometry = new THREE.SphereGeometry(this.size.x * 0.6, 16, 16);
+            const coreGeometry = new THREE.SphereGeometry(this.size.x * 0.6, 24, 24);
             const coreMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0xffdd44, // Bright gold/yellow core
+                color: 0xffee77, // Bright golden-yellow core
                 transparent: true,
-                opacity: 0.9
+                opacity: 0.95
             });
             this.core = new THREE.Mesh(coreGeometry, coreMaterial);
             
             // Middle layer with pulsing effect
-            const middleGeometry = new THREE.SphereGeometry(this.size.x * 0.8, 20, 20);
+            const middleGeometry = new THREE.SphereGeometry(this.size.x * 0.8, 28, 28);
             const middleMaterial = new THREE.MeshPhongMaterial({ 
-                color: 0xff8800, // Orange middle layer
+                color: 0xffa233, // Golden orange middle layer
                 transparent: true,
-                opacity: 0.7,
-                shininess: 100
+                opacity: 0.8,
+                shininess: 120
             });
             this.middleLayer = new THREE.Mesh(middleGeometry, middleMaterial);
             
             // Outer shell (semi-transparent)
-            const shellGeometry = new THREE.SphereGeometry(this.size.x, 20, 20);
+            const shellGeometry = new THREE.SphereGeometry(this.size.x, 32, 32);
             const shellMaterial = new THREE.MeshPhongMaterial({ 
-                color: 0xff5522, // Reddish-orange outer shell
+                color: 0xff9940, // Warm orange outer shell
                 transparent: true,
                 opacity: 0.7,
-                shininess: 90,
-                emissive: 0xff3300, // Red-orange glow
-                emissiveIntensity: 0.6
+                shininess: 100,
+                emissive: 0xff8b33, // Warm orange glow
+                emissiveIntensity: 0.7
             });
             this.mesh = new THREE.Mesh(shellGeometry, shellMaterial);
             
@@ -232,8 +241,8 @@ class Player {
         
         try {
             // Simple sphere as fallback with new color
-            const geometry = new THREE.SphereGeometry(this.size.x, 8, 8);
-            const material = new THREE.MeshBasicMaterial({ color: 0xff7700 }); // Orange fallback
+            const geometry = new THREE.SphereGeometry(this.size.x, 16, 16);
+            const material = new THREE.MeshBasicMaterial({ color: 0xffb347 }); // Warm orange fallback
             this.mesh = new THREE.Mesh(geometry, material);
             this.mesh.position.set(this.position.x, this.position.y, this.position.z);
             this.scene.add(this.mesh);
@@ -315,24 +324,23 @@ class Player {
     
     addGlow() {
         try {
-            // Add a more dynamic glow effect with updated colors
-            this.light = new THREE.PointLight(0xff8800, 1.5, 3); // Changed to orange
-            this.light.position.copy(this.mesh.position);
-            this.scene.add(this.light);
+            // Create an outer glow effect using a point light
+            this.glow = new THREE.PointLight(0xffcc33, 2.0, 3.0);
+            this.glow.position.copy(this.position);
+            this.scene.add(this.glow);
             
-            // Add a pulsing effect to the glow
-            this.pulseTime = 0;
+            // Add a soft ambient light attached to the player
+            this.ambientGlow = new THREE.PointLight(0xffaa22, 0.8, 5.0);
+            this.ambientGlow.position.copy(this.position);
+            this.scene.add(this.ambientGlow);
             
-            // Create a second light for more dramatic effect
-            this.secondaryLight = new THREE.PointLight(0xff5500, 1, 2); // Red-orange secondary light
-            this.secondaryLight.position.copy(this.mesh.position);
-            this.scene.add(this.secondaryLight);
-            
-            // Ensure the glow effect is updated with the player
-            this.glowActive = true;
+            // Pulsating effect for the glow
+            this.glowIntensity = 2.0;
+            this.glowDirection = 0.05;
+            this.glowMin = 1.5;
+            this.glowMax = 2.5;
         } catch(error) {
-            console.error("Error adding glow:", error);
-            this.glowActive = false;
+            console.error("Error creating glow effect:", error);
         }
     }
     
@@ -345,7 +353,10 @@ class Player {
             return false;
         }
         
-        if (!this.isJumping) {
+        // Check ground position more explicitly to ensure proper jumping
+        const onGround = this.position.y <= 0.5 && this.velocity.y <= 0;
+        
+        if (onGround) {
             // First jump
             this.velocity.y = this.jumpForce;
             this.isJumping = true;
@@ -376,11 +387,11 @@ class Player {
             }, 150);
             
             // Increase light intensity briefly
-            if (this.light) {
-                const originalIntensity = this.light.intensity;
-                this.light.intensity = 2;
+            if (this.glow) {
+                const originalIntensity = this.glow.intensity;
+                this.glow.intensity = 2;
                 setTimeout(() => {
-                    this.light.intensity = originalIntensity;
+                    this.glow.intensity = originalIntensity;
                 }, 200);
             }
             
@@ -467,135 +478,92 @@ class Player {
             this.position.x = Math.max(-2, Math.min(2, this.position.x));
             
             // Check if landed on ground
-            if (this.position.y <= 0.5) {
+            if (this.position.y <= 0.5) {  // CHANGED: From 0 to 0.5 to match initial player position
                 this.position.y = 0.5;
                 this.velocity.y = 0;
                 this.isJumping = false;
                 this.doubleJumpAvailable = false;
             }
             
-            // Update mesh position to match player position
-            if (this.mesh) {
-                this.mesh.position.copy(this.position);
+            // ENHANCED: Dynamic color pulsing based on movement
+            const dynamicFactor = Math.abs(this.velocity.x) + Math.abs(this.velocity.y);
+            const colorIntensity = 0.5 + dynamicFactor * 0.5; // More movement = brighter
+            
+            // Inner core pulses more intensely with movement
+            if (this.core) {
+                this.core.material.color.setHSL(
+                    0.12 - dynamicFactor * 0.01, // Slight hue shift with speed
+                    0.9,
+                    Math.min(0.9, 0.7 + dynamicFactor * 0.3) // Brighter when moving
+                );
                 
-                // MODIFIED: Apply gentle rotation based on movement for more visual appeal
-                const targetRotationX = -this.velocity.z * 5; // Tilt forward/backward based on z movement
-                const targetRotationZ = -this.velocity.x * 5; // Tilt left/right based on x movement
-                
-                // Smoothly interpolate rotation
-                this.mesh.rotation.x += (targetRotationX - this.mesh.rotation.x) * 0.1;
-                this.mesh.rotation.z += (targetRotationZ - this.mesh.rotation.z) * 0.1;
-                
-                // ADDED: Dynamic scaling for a slight bouncy effect
-                const scale = 1.0 + Math.sin(Date.now() * 0.005) * 0.03;
-                this.mesh.scale.set(scale, scale, scale);
+                // Core pulses gently
+                const pulseScale = 1 + Math.sin(Date.now() * 0.005) * 0.07;
+                this.core.scale.set(pulseScale, pulseScale, pulseScale);
             }
             
+            // Middle layer color responds to velocity
+            if (this.middleLayer) {
+                this.middleLayer.material.color.setHSL(
+                    0.08 + Math.sin(Date.now() * 0.001) * 0.02, // Dynamic hue shift
+                    0.8 + dynamicFactor * 0.1,
+                    0.6 + dynamicFactor * 0.2
+                );
+            }
+            
+            // Update player mesh position
+            this.mesh.position.set(this.position.x, this.position.y, this.position.z);
+            
             // Update glow light position and effects
-            if (this.light) {
-                this.light.position.copy(this.position);
+            if (this.glow) {
+                this.glow.position.copy(this.position);
                 
                 // MODIFIED: Dynamic fire-like glow pulsing effect
-                this.pulseTime += 0.1;
-                const pulseIntensity = 1.5 + Math.sin(this.pulseTime) * 0.3;
-                this.light.intensity = pulseIntensity;
+                this.glowIntensity += this.glowDirection;
+                if (this.glowIntensity > this.glowMax) {
+                    this.glowDirection = -0.05;
+                } else if (this.glowIntensity < this.glowMin) {
+                    this.glowDirection = 0.05;
+                }
+                this.glow.intensity = this.glowIntensity;
                 
                 // Slightly randomize the light color for flickering fire effect
                 if (Math.random() > 0.7) {
                     const hue = 0.05 + Math.random() * 0.1; // Orange-yellow range
-                    this.light.color.setHSL(hue, 0.9, 0.6);
+                    this.glow.color.setHSL(hue, 0.9, 0.6);
                 }
             }
             
             // Update secondary light
-            if (this.secondaryLight) {
-                this.secondaryLight.position.copy(this.position);
-                this.secondaryLight.position.y -= 0.1; // Position slightly below for better visual effect
+            if (this.ambientGlow) {
+                this.ambientGlow.position.copy(this.position);
+                this.ambientGlow.position.y -= 0.1; // Position slightly below for better visual effect
                 
                 // MODIFIED: Flicker the secondary light like a flame
                 if (Math.random() > 0.5) {
                     const flickerIntensity = 0.8 + Math.random() * 0.4;
-                    this.secondaryLight.intensity = flickerIntensity;
+                    this.ambientGlow.intensity = flickerIntensity;
                 }
+                
+                // ADDED: Dynamic color based on movement
+                const ambientHue = 0.08 + dynamicFactor * 0.03; // Shifts toward yellow with speed
+                this.ambientGlow.color.setHSL(
+                    Math.min(0.15, ambientHue),
+                    0.9,
+                    0.5 + dynamicFactor * 0.2
+                );
             }
             
-            // More dynamic rotation for visual interest
-            // Adjust rotation speed in slow motion
-            const rotationSpeed = this.slowMotion ? 0.005 : 0.02;
-            this.mesh.rotation.y += rotationSpeed;
-            this.mesh.rotation.z += rotationSpeed / 2;
-            
-            // MODIFIED: Better visual feedback during different states
-            if (this.isJumping) {
-                // More dramatic tilt when jumping
-                this.mesh.rotation.x = this.velocity.y * 0.2;
+            // Dynamic shell glow based on movement
+            if (this.mesh && this.mesh.material && this.mesh.material.emissive) {
+                const emissiveIntensity = 0.5 + dynamicFactor * 0.3;
+                this.mesh.material.emissiveIntensity = Math.min(1.0, emissiveIntensity);
                 
-                // Add slight tilt based on horizontal velocity for better feedback
-                this.mesh.rotation.z = -this.velocity.x * 0.5;
-                
-                // Change color based on jump state
-                if (this.mesh.material && this.mesh.material.emissive) {
-                    if (this.doubleJumpAvailable) {
-                        // First jump - blue hue
-                        this.mesh.material.emissive.setHSL(0.6, 0.7, 0.5);
-                    } else {
-                        // Double jump - purple hue
-                        this.mesh.material.emissive.setHSL(0.7, 0.9, 0.6);
-                    }
-                }
-                
-                // Pulse the middle layer
-                if (this.middleLayer) {
-                    const pulseSpeed = this.slowMotion ? 2 : 5;
-                    this.middleLayer.scale.set(
-                        1 + Math.sin(Date.now() * pulseSpeed) * 0.1,
-                        1 + Math.sin(Date.now() * pulseSpeed) * 0.1,
-                        1 + Math.sin(Date.now() * pulseSpeed) * 0.1
-                    );
-                }
-            } else {
-                // Reset rotation when on ground
-                this.mesh.rotation.x *= 0.9;
-                
-                // Add tilt based on horizontal velocity for better feedback
-                this.mesh.rotation.z = -this.velocity.x * 0.5;
-                
-                // Restore normal color
-                if (this.mesh.material && this.mesh.material.emissive) {
-                    this.mesh.material.emissive.setHSL(0.6, 0.5, 0.3);
-                }
-                
-                // Normal pulsing for middle layer
-                if (this.middleLayer) {
-                    const pulseSpeed = this.slowMotion ? 0.5 : 2;
-                    this.middleLayer.scale.set(
-                        1 + Math.sin(Date.now() * pulseSpeed) * 0.05,
-                        1 + Math.sin(Date.now() * pulseSpeed) * 0.05,
-                        1 + Math.sin(Date.now() * pulseSpeed) * 0.05
-                    );
-                }
+                // Shift the emissive color slightly
+                const emissiveHue = 0.08 + Math.sin(Date.now() * 0.002) * 0.02;
+                this.mesh.material.emissive.setHSL(emissiveHue, 0.9, 0.5);
             }
-            
-            // More dramatic squash and stretch
-            const baseScale = 1;
-            if (this.velocity.y > 0.1) {
-                // Stretch when moving up
-                this.mesh.scale.set(baseScale * 0.85, baseScale * 1.15, baseScale * 0.85);
-            } else if (this.velocity.y < -0.1) {
-                // Squash when falling
-                this.mesh.scale.set(baseScale * 1.15, baseScale * 0.85, baseScale * 1.15);
-            } else {
-                // Normal when on ground or at peak of jump
-                this.mesh.scale.set(baseScale, baseScale, baseScale);
-            }
-            
-            // Add slight stretching effect when moving horizontally
-            if (Math.abs(this.velocity.x) > 0.03) {
-                const stretchFactor = 0.15 * Math.abs(this.velocity.x) / this.maxHorizontalSpeed;
-                this.mesh.scale.x += stretchFactor * Math.sign(-this.velocity.x);
-                this.mesh.scale.z += stretchFactor * 0.5;
-            }
-        } catch (error) {
+        } catch(error) {
             console.error("Error in player update:", error);
         }
     }
@@ -612,9 +580,12 @@ class Player {
         this.gravity = 0.015; // Reset to normal gravity
         
         try {
-            this.mesh.position.set(this.position.x, this.position.y, this.position.z);
-            this.mesh.rotation.set(0, 0, 0);
-            this.mesh.scale.set(1, 1, 1);
+            // Make sure mesh position is updated and properly positioned at ground level
+            if (this.mesh) {
+                this.mesh.position.set(this.position.x, this.position.y, this.position.z);
+                this.mesh.rotation.set(0, 0, 0);
+                this.mesh.scale.set(1, 1, 1);
+            }
         } catch(error) {
             console.error("Error in player reset:", error);
         }

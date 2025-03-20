@@ -778,8 +778,15 @@ class Game {
         
         const isColliding = overlapX && overlapY && overlapZ;
         
-        // For debugging: visualize collision boxes
+        // Debug collision info if colliding
         if (isColliding) {
+            console.log('Collision details:', {
+                player: { pos: pos1, size: size1 },
+                obstacle: { pos: pos2, size: size2 },
+                overlap: { x: overlapX, y: overlapY, z: overlapZ }
+            });
+            
+            // For debugging: visualize collision boxes
             this.visualizeCollisionBoxes(pos1, pos2, size1, size2);
         }
         
