@@ -251,6 +251,21 @@
     </script>
 </head>
 <body>
+    <!-- NEW: Enhanced space background elements -->
+    <div id="space-background">
+        <!-- Nebulas for atmospheric depth -->
+        <div class="nebula nebula-1"></div>
+        <div class="nebula nebula-2"></div>
+        
+        <!-- Distant planets -->
+        <div class="planet planet-1"></div>
+        <div class="planet planet-2"></div>
+        <div class="planet planet-3"></div>
+        
+        <!-- Particles container for shooting stars and ambient particles -->
+        <div class="particles-container"></div>
+    </div>
+    
     <div id="game-container">
         <div id="ui-layer">
             <div id="score">Score: 0</div>
@@ -294,6 +309,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Create dynamic sparkles
             createSparkles();
+            
+            // NEW: Initialize the enhanced space effects
+            initEnhancedSpaceEffects();
             
             document.getElementById('start-button').addEventListener('click', function(e) {
                 console.log("Start button clicked directly");
@@ -355,6 +373,149 @@
                 
                 sparklesContainer.appendChild(sparkle);
             }
+        }
+        
+        // NEW: Function to initialize enhanced space effects
+        function initEnhancedSpaceEffects() {
+            // Create shooting stars
+            createShootingStars();
+            
+            // Create floating particles around title and button
+            createFloatingParticles();
+        }
+        
+        // NEW: Function to create shooting stars
+        function createShootingStars() {
+            const container = document.querySelector('.particles-container');
+            if (!container) return;
+            
+            // Function to create a single shooting star
+            function createStar() {
+                const star = document.createElement('div');
+                star.className = 'shooting-star';
+                
+                // Random position in the upper portion of the screen
+                const startX = Math.random() * window.innerWidth;
+                const startY = Math.random() * (window.innerHeight * 0.7);
+                
+                // Random angle (mostly diagonal downward)
+                const angle = 30 + Math.random() * 40;
+                
+                // Apply styles
+                star.style.left = `${startX}px`;
+                star.style.top = `${startY}px`;
+                star.style.transform = `rotate(${angle}deg)`;
+                
+                // Add to container
+                container.appendChild(star);
+                
+                // Remove after animation completes
+                setTimeout(() => {
+                    if (container.contains(star)) {
+                        container.removeChild(star);
+                    }
+                }, 3000);
+            }
+            
+            // Create shooting stars periodically
+            setInterval(createStar, 2000 + Math.random() * 3000);
+            
+            // Create a few stars immediately
+            for (let i = 0; i < 3; i++) {
+                setTimeout(createStar, i * 1500);
+            }
+        }
+        
+        // NEW: Function to create floating particles around title and button
+        function createFloatingParticles() {
+            const container = document.querySelector('.particles-container');
+            if (!container) return;
+            
+            // Get element positions when they're available
+            function initParticles() {
+                const title = document.querySelector('.game-title');
+                const button = document.querySelector('.pulse-button');
+                
+                if (!title || !button) {
+                    // Retry after a short delay if elements aren't ready
+                    setTimeout(initParticles, 500);
+                    return;
+                }
+                
+                const titleRect = title.getBoundingClientRect();
+                const buttonRect = button.getBoundingClientRect();
+                
+                // Function to create a single particle
+                function createParticle(x, y) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    
+                    // Set initial position
+                    particle.style.left = `${x}px`;
+                    particle.style.top = `${y}px`;
+                    
+                    // Random size (tiny)
+                    const size = 1 + Math.random() * 2;
+                    particle.style.width = `${size}px`;
+                    particle.style.height = `${size}px`;
+                    
+                    // Random opacity
+                    particle.style.opacity = 0.3 + Math.random() * 0.5;
+                    
+                    // Add glow for some particles
+                    if (Math.random() > 0.7) {
+                        particle.style.boxShadow = `0 0 ${2 + Math.random() * 3}px rgba(255, 255, 255, 0.8)`;
+                    }
+                    
+                    // Add to container
+                    container.appendChild(particle);
+                    
+                    // Animate floating upward and fading
+                    let posX = parseFloat(particle.style.left);
+                    let posY = parseFloat(particle.style.top);
+                    const speedX = (Math.random() - 0.5) * 0.5;
+                    const speedY = -0.3 - Math.random() * 0.5; // Upward
+                    let opacity = parseFloat(particle.style.opacity);
+                    
+                    function animate() {
+                        if (opacity <= 0 || !container.contains(particle)) {
+                            if (container.contains(particle)) {
+                                container.removeChild(particle);
+                            }
+                            return;
+                        }
+                        
+                        posX += speedX;
+                        posY += speedY;
+                        opacity -= 0.005;
+                        
+                        particle.style.left = `${posX}px`;
+                        particle.style.top = `${posY}px`;
+                        particle.style.opacity = opacity;
+                        
+                        requestAnimationFrame(animate);
+                    }
+                    
+                    requestAnimationFrame(animate);
+                }
+                
+                // Create particles around title
+                setInterval(() => {
+                    const x = titleRect.left + Math.random() * titleRect.width;
+                    const y = titleRect.top + titleRect.height + Math.random() * 10;
+                    createParticle(x, y);
+                }, 100);
+                
+                // Create particles around button
+                setInterval(() => {
+                    const x = buttonRect.left + Math.random() * buttonRect.width;
+                    const y = buttonRect.top + buttonRect.height + Math.random() * 5;
+                    createParticle(x, y);
+                }, 150);
+            }
+            
+            // Start the particle generation when page is ready
+            initParticles();
         }
     </script>
 </body>

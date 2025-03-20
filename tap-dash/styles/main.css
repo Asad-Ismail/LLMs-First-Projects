@@ -222,56 +222,212 @@ button:active {
     100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
 }
 
-/* Animated stars background */
+/* UPDATED: Improved infinite stars animation */
 .stars-container {
     position: absolute;
     width: 100%;
     height: 100%;
     overflow: hidden;
     z-index: 0;
+    transform: translateZ(0); /* Performance optimization */
 }
 
 .stars {
+    position: absolute;
+    width: 100%;
+    height: 300%; /* Extra height for continuous effect */
+    top: -200%; /* Start from above viewport */
+    left: 0;
+    right: 0;
+    background-repeat: repeat;
+    opacity: 0;
+    will-change: transform; /* Performance optimization */
+}
+
+.stars:nth-child(1) {
     background-image: 
         radial-gradient(2px 2px at 20px 30px, #eef 100%, transparent),
         radial-gradient(2px 2px at 40px 70px, #fff 100%, transparent),
         radial-gradient(1px 1px at 90px 40px, #ddf 100%, transparent),
         radial-gradient(2px 2px at 160px 120px, #fff 100%, transparent);
-    background-repeat: repeat;
     background-size: 200px 200px;
-    opacity: 0;
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-}
-
-.stars:nth-child(1) {
-    background-position: 50% 50%;
-    animation: stars-animation 100s linear infinite;
+    animation: stars-animation-1 100s linear infinite;
     opacity: 0.4;
 }
 
 .stars:nth-child(2) {
-    background-position: 20% 60%;
-    animation: stars-animation 150s linear infinite;
+    background-image: 
+        radial-gradient(2px 2px at 25px 35px, #aad 100%, transparent),
+        radial-gradient(2px 2px at 65px 150px, #ccf 100%, transparent),
+        radial-gradient(1px 1px at 105px 70px, #ddf 100%, transparent),
+        radial-gradient(2px 2px at 140px 30px, #eef 100%, transparent);
+    background-size: 300px 300px;
+    animation: stars-animation-2 150s linear infinite;
     opacity: 0.3;
 }
 
 .stars:nth-child(3) {
-    background-position: 80% 40%;
-    animation: stars-animation 200s linear infinite;
+    background-image: 
+        radial-gradient(1px 1px at 10px 10px, #fff 100%, transparent),
+        radial-gradient(1px 1px at 150px 50px, #fff 100%, transparent),
+        radial-gradient(1px 1px at 60px 90px, #fff 100%, transparent),
+        radial-gradient(1px 1px at 100px 150px, #fff 100%, transparent);
+    background-size: 150px 150px;
+    animation: stars-animation-3 80s linear infinite;
     opacity: 0.5;
 }
 
-@keyframes stars-animation {
-    from {
-        transform: translateY(0);
+@keyframes stars-animation-1 {
+    0% {
+        transform: translateY(0%);
     }
-    to {
-        transform: translateY(1000px);
+    100% {
+        transform: translateY(66.6%);
     }
+}
+
+@keyframes stars-animation-2 {
+    0% {
+        transform: translateY(0%);
+    }
+    100% {
+        transform: translateY(66.6%);
+    }
+}
+
+@keyframes stars-animation-3 {
+    0% {
+        transform: translateY(0%);
+    }
+    100% {
+        transform: translateY(66.6%);
+    }
+}
+
+/* NEW: Nebulas and cosmic clouds */
+.nebula {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.2;
+    z-index: -1;
+    filter: blur(10px);
+    will-change: transform;
+}
+
+.nebula-1 {
+    background: radial-gradient(ellipse at center, rgba(63, 94, 251, 0.15) 0%, rgba(70, 50, 120, 0.1) 100%);
+    animation: nebula-drift-1 120s ease-in-out infinite alternate;
+}
+
+.nebula-2 {
+    background: radial-gradient(ellipse at bottom right, rgba(134, 0, 212, 0.1) 0%, rgba(66, 37, 129, 0) 70%);
+    animation: nebula-drift-2 180s ease-in-out infinite alternate;
+}
+
+@keyframes nebula-drift-1 {
+    0% { transform: scale(1.1) translate(-5%, -5%); }
+    100% { transform: scale(1.3) translate(5%, 5%); }
+}
+
+@keyframes nebula-drift-2 {
+    0% { transform: scale(1) translate(5%, 5%); }
+    100% { transform: scale(1.2) translate(-5%, -5%); }
+}
+
+/* NEW: Shooting Stars */
+.shooting-star {
+    position: absolute;
+    height: 2px;
+    background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 50%, rgba(255,255,255,0) 100%);
+    animation: shooting 3s linear infinite;
+    opacity: 0;
+}
+
+@keyframes shooting {
+    0% {
+        transform: translateX(0) translateY(0) rotate(45deg);
+        width: 0;
+        opacity: 0;
+    }
+    5% {
+        opacity: 1;
+        width: 100px;
+    }
+    20% {
+        transform: translateX(300px) translateY(300px) rotate(45deg);
+        width: 150px;
+        opacity: 0;
+    }
+    100% {
+        transform: translateX(300px) translateY(300px) rotate(45deg);
+        width: 0;
+        opacity: 0;
+    }
+}
+
+/* NEW: Floating planets */
+.planet {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(1px);
+    animation: planet-float 20s ease-in-out infinite alternate;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+}
+
+.planet-1 {
+    width: 50px;
+    height: 50px;
+    background: radial-gradient(circle at 30% 30%, #8B84CB, #573B9B);
+    top: 15%;
+    right: 10%;
+    opacity: 0.5;
+    animation-duration: 25s;
+}
+
+.planet-2 {
+    width: 30px;
+    height: 30px;
+    background: radial-gradient(circle at 40% 40%, #FEA97F, #F73C4A);
+    bottom: 20%;
+    left: 8%;
+    opacity: 0.4;
+    animation-duration: 20s;
+}
+
+.planet-3 {
+    width: 20px;
+    height: 20px;
+    background: radial-gradient(circle at 35% 35%, #9FEFCD, #248F75);
+    top: 30%;
+    left: 15%;
+    opacity: 0.3;
+    animation-duration: 28s;
+}
+
+@keyframes planet-float {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(20px, 15px); }
+}
+
+/* NEW: Particles container */
+.particles-container {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.particle {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background-color: #ffffff;
+    border-radius: 50%;
+    pointer-events: none;
 }
 
 /* Logo container with orbiting elements */
@@ -281,7 +437,7 @@ button:active {
     margin-bottom: 40px;
 }
 
-/* Main title styling */
+/* Main title styling - ENHANCED */
 .game-title {
     font-size: 95px;
     font-weight: 800;
