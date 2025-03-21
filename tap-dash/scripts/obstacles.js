@@ -53,18 +53,22 @@ class ObstacleManager {
             let geometry;
             let material;
             
-            // Create space-themed colors
+            // ENHANCED: More vibrant space-themed colors with a wider palette
             const colorOptions = [
                 new THREE.Color(0x4466ff), // Blue 
                 new THREE.Color(0xff5533), // Red-orange (Mars-like)
                 new THREE.Color(0xaaddff), // Light blue (Earth-like)
-                new THREE.Color(0xffcc44)  // Yellow-gold (Saturn-like)
+                new THREE.Color(0xffcc44),  // Yellow-gold (Saturn-like)
+                new THREE.Color(0x33ff88), // Bright teal (alien world)
+                new THREE.Color(0xff44aa), // Pink (nebula-like)
+                new THREE.Color(0x88ddff), // Cyan (ice planet)
+                new THREE.Color(0xffaa22)  // Orange (gas giant)
             ];
             const obstacleColor = colorOptions[Math.floor(Math.random() * colorOptions.length)];
             
             if (selectedType.type === 'asteroid') {
-                // Create irregular asteroid using icosahedron geometry with noise
-                geometry = new THREE.IcosahedronGeometry(selectedType.width / 2, 1);
+                // Create irregular asteroid using icosahedron geometry with more detail
+                geometry = new THREE.IcosahedronGeometry(selectedType.width / 2, 2); // Increased detail level
                 
                 // Add some randomness to vertices to make it more irregular
                 const positionAttribute = geometry.getAttribute('position');
@@ -73,9 +77,9 @@ class ObstacleManager {
                 for (let i = 0; i < positionAttribute.count; i++) {
                     vertex.fromBufferAttribute(positionAttribute, i);
                     
-                    // Apply noise to vertex
+                    // Apply more pronounced noise to vertex
                     vertex.normalize().multiplyScalar(
-                        selectedType.width/2 * (0.8 + Math.random() * 0.4)
+                        selectedType.width/2 * (0.7 + Math.random() * 0.6)
                     );
                     
                     positionAttribute.setXYZ(i, vertex.x, vertex.y, vertex.z);
@@ -84,35 +88,132 @@ class ObstacleManager {
                 // Ensure normals are updated
                 geometry.computeVertexNormals();
                 
-                // Create rocky material
-                material = new THREE.MeshPhongMaterial({
-                    color: new THREE.Color(0xaa8866),
-                    shininess: 10,
+                // COMPLETELY REVAMPED: Much more colorful and interesting asteroid materials
+                // Create a base texture for the asteroid using a procedural approach
+                const asteroidTexture = createAsteroidTexture();
+                
+                // Choose from several space rock types with rich colors
+                const asteroidTypes = [
+                    {   // Copper/bronze asteroid
+                        color: 0xcc7755,
+                        emissive: 0x331100,
+                        emissiveIntensity: 0.2,
+                    },
+                    {   // Blue ice asteroid
+                        color: 0x77aadd, 
+                        emissive: 0x113366,
+                        emissiveIntensity: 0.3,
+                    },
+                    {   // Purple crystal asteroid
+                        color: 0xaa55cc,
+                        emissive: 0x550088,
+                        emissiveIntensity: 0.4,
+                    },
+                    {   // Gold/mineral rich asteroid
+                        color: 0xddbb44,
+                        emissive: 0x553300,
+                        emissiveIntensity: 0.2,
+                    },
+                    {   // Emerald/green asteroid
+                        color: 0x55cc77,
+                        emissive: 0x115522,
+                        emissiveIntensity: 0.3,
+                    }
+                ];
+                
+                // Select a random asteroid type
+                const asteroidType = asteroidTypes[Math.floor(Math.random() * asteroidTypes.length)];
+                
+                // Create material with more dramatic lighting and color
+                material = new THREE.MeshStandardMaterial({
+                    color: asteroidType.color,
+                    emissive: asteroidType.emissive,
+                    emissiveIntensity: asteroidType.emissiveIntensity,
+                    roughness: 0.7,
+                    metalness: 0.3,
                     flatShading: true,
-                    specular: 0x333333
+                    map: asteroidTexture,
                 });
                 
                 mesh = new THREE.Mesh(geometry, material);
+                
+                // Add a subtle glow effect to some asteroids (30% chance)
+                if (Math.random() > 0.7) {
+                    const glowColor = new THREE.Color(asteroidType.emissive);
+                    const glowLight = new THREE.PointLight(glowColor, 0.5, 1.5);
+                    mesh.add(glowLight);
+                    
+                    // Add crystal spikes to glowing asteroids
+                    const spikeCount = 3 + Math.floor(Math.random() * 4);
+                    for (let i = 0; i < spikeCount; i++) {
+                        const spikeGeometry = new THREE.ConeGeometry(0.1, 0.3, 5);
+                        const spikeMaterial = new THREE.MeshStandardMaterial({
+                            color: glowColor,
+                            emissive: glowColor,
+                            emissiveIntensity: 0.8,
+                            transparent: true,
+                            opacity: 0.8
+                        });
+                        
+                        const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
+                        
+                        // Position spike randomly on the asteroid surface
+                        const theta = Math.random() * Math.PI * 2;
+                        const phi = Math.random() * Math.PI;
+                        const radius = selectedType.width / 2;
+                        
+                        spike.position.set(
+                            radius * Math.sin(phi) * Math.cos(theta),
+                            radius * Math.sin(phi) * Math.sin(theta),
+                            radius * Math.cos(phi)
+                        );
+                        
+                        // Orient spike to point outward
+                        spike.lookAt(0, 0, 0);
+                        spike.rotateX(Math.PI); // Flip to point outward
+                        
+                        mesh.add(spike);
+                    }
+                }
+                
                 mesh.rotation.set(
                     Math.random() * Math.PI, 
                     Math.random() * Math.PI,
                     Math.random() * Math.PI
                 );
-                mesh.position.set(xPosition, selectedType.height / 2, zPosition);
+                
+                // Make sure asteroid is positioned well above ground
+                mesh.position.set(xPosition, Math.max(selectedType.height / 2, 0.3), zPosition);
                 
             } else if (selectedType.type === 'planet') {
                 // Create a planet with rings
                 geometry = new THREE.SphereGeometry(selectedType.width / 2, 24, 24);
                 
-                // Create planet material with texture simulation
+                // IMPROVED: More interesting planet material with glow
                 material = new THREE.MeshPhongMaterial({
                     color: obstacleColor,
-                    shininess: 30,
-                    specular: 0xffffff
+                    shininess: 50,
+                    specular: 0xffffff,
+                    emissive: new THREE.Color(obstacleColor).multiplyScalar(0.2)
                 });
                 
                 mesh = new THREE.Mesh(geometry, material);
-                mesh.position.set(xPosition, selectedType.height / 2, zPosition);
+                
+                // FIXED: Ensure planet sits well above ground with extra clearance
+                // Increase the minimum height to ensure rings don't clip ground
+                mesh.position.set(xPosition, Math.max(selectedType.height / 2, 0.7), zPosition);
+                
+                // Add atmosphere glow to planets
+                const atmosphere = new THREE.Mesh(
+                    new THREE.SphereGeometry(selectedType.width / 2 * 1.1, 24, 24),
+                    new THREE.MeshBasicMaterial({
+                        color: new THREE.Color(obstacleColor).multiplyScalar(1.2),
+                        transparent: true,
+                        opacity: 0.3,
+                        side: THREE.BackSide
+                    })
+                );
+                mesh.add(atmosphere);
                 
                 // Add rings to some planets (50% chance)
                 if (Math.random() > 0.5) {
@@ -122,56 +223,155 @@ class ObstacleManager {
                         32
                     );
                     
+                    // IMPROVED: More vibrant ring material with better visibility
                     const ringMaterial = new THREE.MeshBasicMaterial({ 
-                        color: new THREE.Color(obstacleColor).multiplyScalar(1.3),
+                        color: new THREE.Color(obstacleColor).multiplyScalar(1.5),
                         side: THREE.DoubleSide,
                         transparent: true,
-                        opacity: 0.7
+                        opacity: 0.8
                     });
                     
                     const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-                    ring.rotation.x = Math.PI / 2;
-                    mesh.add(ring);
                     
-                    // Rotate ring slightly for better visual
-                    ring.rotation.y = Math.random() * Math.PI / 4;
+                    // FIXED: Position rings to be more horizontal and never below ground
+                    ring.rotation.x = Math.PI / 2 + (Math.random() - 0.5) * 0.5; // Less tilt variation
+                    
+                    // Add a small vertical offset to ensure rings are visible and above ground
+                    // Modify this if the rings are still appearing below the ground
+                    ring.position.y = 0.05;
+                    
+                    mesh.add(ring);
                 }
                 
             } else if (selectedType.type === 'satellite') {
-                // Create a satellite with panels
+                // REDESIGNED: Transform satellites into colorful space stations or spaceships
+                
+                // Base color will be from our vibrant palette instead of gray
+                const baseColor = obstacleColor;
+                
+                // Create a more interesting main body
                 const bodyGeometry = new THREE.CylinderGeometry(
-                    selectedType.width / 6, 
+                    selectedType.width / 4, 
                     selectedType.width / 6, 
                     selectedType.height, 
                     8
                 );
                 
+                // Use the vibrant color for the body instead of gray
                 const bodyMaterial = new THREE.MeshPhongMaterial({
-                    color: 0xcccccc,
-                    shininess: 80,
-                    specular: 0xffffff
+                    color: baseColor,
+                    shininess: 100,
+                    specular: 0xffffff,
+                    emissive: new THREE.Color(baseColor).multiplyScalar(0.3) // Stronger emissive glow
                 });
                 
                 mesh = new THREE.Mesh(bodyGeometry, bodyMaterial);
-                mesh.rotation.x = Math.PI / 2; // Align horizontally
                 
-                // Add solar panels
+                // Give it a more spaceship-like orientation
+                mesh.rotation.z = Math.PI / 2; // This makes it look more like a spaceship
+                
+                // Add distinctive "engine" glow at the back
+                const engineGlow = new THREE.PointLight(
+                    new THREE.Color(0x44ffff), // Cyan engine glow
+                    1.0,
+                    2
+                );
+                engineGlow.position.set(-selectedType.height/2 - 0.1, 0, 0);
+                mesh.add(engineGlow);
+                
+                // Add engine visual
+                const engineGeometry = new THREE.CylinderGeometry(
+                    selectedType.width/8,
+                    selectedType.width/10, 
+                    0.2, 
+                    16
+                );
+                const engineMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x88ffff,
+                    emissive: 0x44ffff,
+                    emissiveIntensity: 1.0,
+                    shininess: 100
+                });
+                const engine = new THREE.Mesh(engineGeometry, engineMaterial);
+                engine.position.set(-selectedType.height/2 - 0.1, 0, 0);
+                engine.rotation.z = Math.PI/2;
+                mesh.add(engine);
+                
+                // Add solar panels/wings with vibrant colors
                 const panelGeometry = new THREE.BoxGeometry(
+                    selectedType.width/4, 
                     selectedType.width, 
-                    selectedType.width / 10, 
-                    selectedType.width / 2
+                    selectedType.width/20
+                );
+                
+                // Use contrasting color for panels
+                const hsl = {};
+                baseColor.getHSL(hsl);
+                const contrastColor = new THREE.Color().setHSL(
+                    (hsl.h + 0.5) % 1.0, // Opposite hue
+                    hsl.s,
+                    hsl.l
                 );
                 
                 const panelMaterial = new THREE.MeshPhongMaterial({
-                    color: 0x3366ff,
+                    color: contrastColor,
                     shininess: 100,
+                    emissive: contrastColor.clone().multiplyScalar(0.3),
                     specular: 0xffffff
                 });
                 
-                const panels = new THREE.Mesh(panelGeometry, panelMaterial);
-                mesh.add(panels);
+                // Top wing/panel
+                const topPanel = new THREE.Mesh(panelGeometry, panelMaterial);
+                topPanel.position.set(0, selectedType.width/2, 0);
+                mesh.add(topPanel);
                 
-                mesh.position.set(xPosition, selectedType.height / 2, zPosition);
+                // Bottom wing/panel
+                const bottomPanel = new THREE.Mesh(panelGeometry, panelMaterial);
+                bottomPanel.position.set(0, -selectedType.width/2, 0);
+                mesh.add(bottomPanel);
+                
+                // Add cockpit/command module at front
+                const cockpitGeometry = new THREE.SphereGeometry(
+                    selectedType.width/5,
+                    16,
+                    16
+                );
+                const cockpitMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x88ccff,
+                    shininess: 150,
+                    transparent: true,
+                    opacity: 0.9,
+                    specular: 0xffffff
+                });
+                const cockpit = new THREE.Mesh(cockpitGeometry, cockpitMaterial);
+                cockpit.position.set(selectedType.height/2, 0, 0);
+                mesh.add(cockpit);
+                
+                // Add blinking navigation lights
+                const navLight1 = new THREE.PointLight(0xff0000, 1, 2); // Red light
+                navLight1.position.set(0, selectedType.width/2, 0);
+                mesh.add(navLight1);
+                
+                const navLight2 = new THREE.PointLight(0x00ff00, 1, 2); // Green light
+                navLight2.position.set(0, -selectedType.width/2, 0);
+                mesh.add(navLight2);
+                
+                // Blinking animation for the lights
+                const blinkLights = () => {
+                    if (!mesh.parent) return; // Stop if removed from scene
+                    
+                    const blinkValue = Math.abs(Math.sin(Date.now() * 0.005));
+                    navLight1.intensity = blinkValue;
+                    navLight2.intensity = blinkValue * 0.8;
+                    engineGlow.intensity = 0.7 + blinkValue * 0.5; // Pulsing engine
+                    
+                    requestAnimationFrame(blinkLights);
+                };
+                
+                blinkLights();
+                
+                // FIXED: Ensure spaceship is well above ground
+                mesh.position.set(xPosition, Math.max(selectedType.width * 0.6, 0.8), zPosition);
                 
             } else if (selectedType.type === 'wormhole') {
                 // Create a wormhole using torus geometry
@@ -182,10 +382,11 @@ class ObstacleManager {
                     100
                 );
                 
-                // Create a shimmering material for the wormhole
+                // IMPROVED: More vibrant glowing wormhole material
                 material = new THREE.MeshPhongMaterial({
                     color: new THREE.Color(0x6633ff),
                     emissive: new THREE.Color(0x3322aa),
+                    emissiveIntensity: 1.0,
                     shininess: 100,
                     specular: 0xffffff,
                     transparent: true,
@@ -196,7 +397,20 @@ class ObstacleManager {
                 
                 // Orient to face the player
                 mesh.rotation.x = Math.PI / 2;
-                mesh.position.set(xPosition, selectedType.height / 2, zPosition);
+                
+                // FIXED: Ensure wormhole is positioned higher above ground
+                mesh.position.set(xPosition, Math.max(selectedType.width / 2, 0.9), zPosition);
+                
+                // Add central glow effect
+                const glowGeometry = new THREE.SphereGeometry(selectedType.width / 4, 16, 16);
+                const glowMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x9966ff,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                
+                const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                mesh.add(glow);
                 
                 // Add pulsating animation for wormhole
                 const pulseWormhole = () => {
@@ -205,8 +419,15 @@ class ObstacleManager {
                     const time = Date.now() * 0.001;
                     material.emissive.setHSL(
                         (time * 0.1) % 1, 
-                        0.5, 
-                        0.2 + Math.sin(time * 2) * 0.1
+                        0.7, 
+                        0.35 + Math.sin(time * 2) * 0.15
+                    );
+                    
+                    // Also pulse the central glow
+                    glow.scale.set(
+                        1 + Math.sin(time * 3) * 0.2,
+                        1 + Math.sin(time * 3) * 0.2,
+                        1 + Math.sin(time * 3) * 0.2
                     );
                     
                     requestAnimationFrame(pulseWormhole);
@@ -241,6 +462,18 @@ class ObstacleManager {
             };
             
             this.obstacles.push(obstacle);
+            
+            // Add enhanced lighting to make obstacles more visible
+            // This helps prevent "gray" appearance due to insufficient lighting
+            if (mesh) {
+                const obstacleLight = new THREE.PointLight(
+                    obstacleColor, 
+                    0.6,  // Intensity 
+                    3     // Distance
+                );
+                obstacleLight.position.set(0, 0, 0);
+                mesh.add(obstacleLight);
+            }
             
         } catch (error) {
             console.error('Error spawning obstacle:', error);
@@ -308,6 +541,15 @@ class ObstacleManager {
                 // Apply custom update logic if defined
                 if (obstacle.mesh.userData.update) {
                     obstacle.mesh.userData.update();
+                }
+                
+                // ADDED: Ensure obstacles don't sink below ground
+                // This is a failsafe in case any animations cause them to go below ground
+                const minHeight = (obstacle.type === 'planet') ? 0.7 : 
+                                 (obstacle.type === 'satellite') ? 0.6 : 0.3;
+                
+                if (obstacle.mesh.position.y < minHeight) {
+                    obstacle.mesh.position.y = minHeight;
                 }
                 
                 // Remove obstacles that have passed the player
@@ -545,4 +787,67 @@ function addHighlightEffect(mesh) {
         mesh.rotation.y += mesh.userData.rotationSpeed.y;
         mesh.rotation.z += mesh.userData.rotationSpeed.z;
     };
+}
+
+// Add this function at the bottom with the other helper functions
+function createAsteroidTexture() {
+    // Create a canvas for the texture
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    
+    // Fill with base color
+    ctx.fillStyle = '#555';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Add noise and crater-like details
+    for (let i = 0; i < 50; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const radius = 5 + Math.random() * 20;
+        
+        // Create gradient for crater
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        
+        // Randomize crater appearance
+        if (Math.random() > 0.5) {
+            // Darker crater
+            gradient.addColorStop(0, 'rgba(40, 40, 40, 0.8)');
+            gradient.addColorStop(0.5, 'rgba(70, 70, 70, 0.5)');
+            gradient.addColorStop(1, 'rgba(120, 120, 120, 0)');
+        } else {
+            // Lighter crater/bump
+            gradient.addColorStop(0, 'rgba(180, 180, 180, 0.8)');
+            gradient.addColorStop(0.5, 'rgba(140, 140, 140, 0.5)');
+            gradient.addColorStop(1, 'rgba(100, 100, 100, 0)');
+        }
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    // Add some sparkling mineral veins
+    ctx.strokeStyle = 'rgba(220, 220, 220, 0.5)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 10; i++) {
+        const x1 = Math.random() * canvas.width;
+        const y1 = Math.random() * canvas.height;
+        const x2 = x1 + (Math.random() - 0.5) * 100;
+        const y2 = y1 + (Math.random() - 0.5) * 100;
+        
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+    }
+    
+    // Create THREE.js texture from canvas
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    
+    return texture;
 }
