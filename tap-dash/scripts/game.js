@@ -80,14 +80,17 @@ class Game {
             this.camera.position.set(0, 2.5, 5.5);
             this.camera.lookAt(0, 1, -5);
             
-            // Create renderer with post-processing capabilities
+            // Create renderer with post-processing capabilities and optimized settings for mobile
+            const isLowEndDevice = this.detectLowEndDevice();
             this.renderer = new THREE.WebGLRenderer({ 
-                antialias: true,
+                antialias: !isLowEndDevice, // Disable antialiasing on low-end devices
                 powerPreference: "high-performance"
             });
             this.renderer.setSize(window.innerWidth, window.innerHeight);
-            this.renderer.setPixelRatio(window.devicePixelRatio);
-            this.renderer.shadowMap.enabled = true;
+            // Cap pixel ratio to improve performance on high-DPI devices
+            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            // Disable shadows since they're not currently being used
+            this.renderer.shadowMap.enabled = false;
             
             // Add the canvas to the DOM
             const gameContainer = document.getElementById('game-container');
@@ -113,7 +116,8 @@ class Game {
                 this.camera.aspect = window.innerWidth / window.innerHeight;
                 this.camera.updateProjectionMatrix();
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
-                this.renderer.setPixelRatio(window.devicePixelRatio);
+                // Maintain capped pixel ratio on resize
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             });
         } catch (error) {
             console.error('Error setting up scene:', error);
@@ -1936,5 +1940,16 @@ class Game {
     showSatelliteImpact() {
         // Implementation of satellite impact effect
         // Electrical sparks or similar visuals
+    }
+
+    detectLowEndDevice() {
+        // Simple heuristic to detect low-end devices
+        // Could be expanded with more sophisticated detection
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const hasLowMemory = navigator.deviceMemory !== undefined && navigator.deviceMemory < 4;
+        const hasLowCores = navigator.hardwareConcurrency !== undefined && navigator.hardwareConcurrency <= 4;
+        
+        // Return true if the device is mobile and has either low memory or few CPU cores
+        return isMobile && (hasLowMemory || hasLowCores);
     }
 }

@@ -41,7 +41,8 @@ tap-dash/
 Impact: Fewer objects to render, easing GPU load with minimal visual compromise.
 
 2- lets reduce number fo trails to 2 instead of 20 something like that 
-3- 
+3- is this sensible to do in my code Optimization: Refactor TrailSystem to use a single Points object with a BufferGeometry. Maintain an array of particle data (position, velocity, lifetime, color) and update it in update. Initialize with enough capacity (e.g., 100 particles), reusing slots for new particles. Update positions in a single Float32Array and set geometry.attributes.position.needsUpdate = true.
+Impact: Reduces draw calls from hundreds to one per frame, boosting performance without losing the fire-like trail effect.
 
 
 
