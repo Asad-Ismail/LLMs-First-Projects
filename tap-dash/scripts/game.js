@@ -129,7 +129,7 @@ class Game {
         try {
             const groundSize = 12;
             const groundLength = 120;
-            const groundGeometry = new THREE.PlaneGeometry(groundSize, groundLength, 20, 100);
+            const groundGeometry = new THREE.PlaneGeometry(groundSize, groundLength, 10, 50);
             
             // Create a grid-like texture for the ground
             const groundMaterial = new THREE.MeshPhongMaterial({ 
