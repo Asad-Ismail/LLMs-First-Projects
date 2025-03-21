@@ -118,7 +118,11 @@ class Player {
                                 
                                 // Add color shifting toward more yellow as it rises (like real fire)
                                 if (lifetime > maxLife * 0.5) {
+                                    // Create target for getHSL - not needed here as we're setting directly
                                     // Shift toward more yellow/white at the end of life
+                                    const targetColor = new THREE.Color();
+                                    particle.material.color.getHSL(targetColor);
+                                    
                                     particle.material.color.setHSL(
                                         Math.min(0.15, fireHue + (lifetime/maxLife) * 0.1), 
                                         Math.max(0.5, fireSaturation - (lifetime/maxLife) * 0.3),
@@ -245,7 +249,13 @@ class Player {
         try {
             // Simple sphere as fallback with new color
             const geometry = new THREE.SphereGeometry(this.size.x, 16, 16);
-            const material = new THREE.MeshBasicMaterial({ color: 0xffb347 }); // Warm orange fallback
+            // Use MeshPhongMaterial instead of MeshBasicMaterial to support emissive
+            const material = new THREE.MeshPhongMaterial({ 
+                color: 0xffb347,  // Warm orange fallback
+                emissive: 0x331100, // Slight glow
+                emissiveIntensity: 0.5,
+                shininess: 30
+            }); 
             this.mesh = new THREE.Mesh(geometry, material);
             this.mesh.position.set(this.position.x, this.position.y, this.position.z);
             this.scene.add(this.mesh);
@@ -258,7 +268,11 @@ class Player {
                 scale: { set: function() {} },
                 material: { 
                     opacity: 1,
-                    emissive: { setHSL: function() {} }
+                    // Provide a no-op emissive object that supports getHSL with target
+                    emissive: { 
+                        setHSL: function() {},
+                        getHSL: function(target) { return target || {}; }
+                    }
                 }
             };
         }
@@ -498,6 +512,10 @@ class Player {
             
             // Inner core pulses more intensely with movement
             if (this.core) {
+                // Create target color for getHSL
+                const coreColor = new THREE.Color();
+                this.core.material.color.getHSL(coreColor);
+                
                 this.core.material.color.setHSL(
                     0.12 - dynamicFactor * 0.01, // Slight hue shift with speed
                     0.9,
@@ -511,6 +529,10 @@ class Player {
             
             // Middle layer color responds to velocity
             if (this.middleLayer) {
+                // Create target color for getHSL
+                const middleColor = new THREE.Color();
+                this.middleLayer.material.color.getHSL(middleColor);
+                
                 this.middleLayer.material.color.setHSL(
                     0.08 + Math.sin(Date.now() * 0.001) * 0.02, // Dynamic hue shift
                     0.8 + dynamicFactor * 0.1,
@@ -559,13 +581,25 @@ class Player {
             }
             
             // Dynamic shell glow based on movement
-            if (this.mesh && this.mesh.material && this.mesh.material.emissive) {
-                const emissiveIntensity = 0.5 + dynamicFactor * 0.3;
-                this.mesh.material.emissiveIntensity = Math.min(1.0, emissiveIntensity);
+            if (this.mesh && this.mesh.material) {
+                // Check if the material is a MeshPhongMaterial or MeshStandardMaterial that supports emissive
+                const supportsMaterial = 
+                    this.mesh.material.type === 'MeshPhongMaterial' || 
+                    this.mesh.material.type === 'MeshStandardMaterial';
                 
-                // Shift the emissive color slightly
-                const emissiveHue = 0.08 + Math.sin(Date.now() * 0.002) * 0.02;
-                this.mesh.material.emissive.setHSL(emissiveHue, 0.9, 0.5);
+                if (supportsMaterial && this.mesh.material.emissive) {
+                    const emissiveIntensity = 0.5 + dynamicFactor * 0.3;
+                    this.mesh.material.emissiveIntensity = Math.min(1.0, emissiveIntensity);
+                    
+                    // Shift the emissive color slightly using target parameter
+                    const emissiveHue = 0.08 + Math.sin(Date.now() * 0.002) * 0.02;
+                    // Create a target color for getHSL
+                    const targetColor = new THREE.Color();
+                    // Get current HSL values
+                    this.mesh.material.emissive.getHSL(targetColor);
+                    // Set new HSL values with target
+                    this.mesh.material.emissive.setHSL(emissiveHue, 0.9, 0.5);
+                }
             }
         } catch(error) {
             console.error("Error in player update:", error);

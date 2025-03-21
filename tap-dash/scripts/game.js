@@ -4,9 +4,29 @@
 class Game {
     constructor() {
         console.log('Game constructor called');
+        // Start performance tracking
+        this.performanceLog = {
+            constructorStart: performance.now(),
+            setupScene: 0,
+            addEnvironment: 0,
+            playerInit: 0,
+            obstacleInit: 0,
+            trailInit: 0,
+            setupControls: 0,
+            constructorTotal: 0,
+            firstJump: 0,
+            firstJumpTotal: 0
+        };
+        
         this.isRunning = false;
         this.score = 0;
         this.gameStarted = false; // Flag to track if gameplay has actually started after countdown
+        
+        // FPS counter variables - properly initialized
+        this.frames = 0;
+        this.lastFpsUpdate = performance.now();
+        this.currentFps = 0;
+        this.hasJumped = false; // Track if first jump happened
         
         // MODIFIED: Better speed progression for more balanced difficulty
         this.speedIncreaseInterval = 15; // Increased from 10 to 15
@@ -15,24 +35,41 @@ class Game {
         
         try {
             // Set up Three.js scene
+            const sceneStart = performance.now();
             this.setupScene();
+            this.performanceLog.setupScene = performance.now() - sceneStart;
             
             // Add environment objects (stars, mountains)
+            const envStart = performance.now();
             this.addEnvironmentObjects();
+            this.performanceLog.addEnvironment = performance.now() - envStart;
             
             // Initialize game objects
+            const playerStart = performance.now();
             this.player = new Player(this.scene);
+            this.performanceLog.playerInit = performance.now() - playerStart;
+            
+            const obstacleStart = performance.now();
             this.obstacleManager = new ObstacleManager(this.scene);
+            this.performanceLog.obstacleInit = performance.now() - obstacleStart;
+            
+            const trailStart = performance.now();
             this.trailSystem = new TrailSystem(this.scene);
+            this.performanceLog.trailInit = performance.now() - trailStart;
             
             // Set up controls
+            const controlsStart = performance.now();
             this.setupControls();
+            this.performanceLog.setupControls = performance.now() - controlsStart;
             
             // Start animation loop
             this.animate();
             
             // Make the game instance globally accessible for debugging
             window.gameInstance = this;
+            
+            this.performanceLog.constructorTotal = performance.now() - this.performanceLog.constructorStart;
+            console.log('Game initialization performance:', this.performanceLog);
             
             console.log('Game initialization complete');
         } catch (error) {
@@ -404,12 +441,51 @@ class Game {
         console.log('Handling tap while game is running');
         
         try {
-            // Attempt to jump
-            const jumped = this.player.jump();
-            
-            // If successfully jumped, create a trail
-            if (jumped) {
-                this.trailSystem.createTrail(this.player.position);
+            // Track first jump performance in detail
+            if (!this.hasJumped) {
+                this.hasJumped = true;
+                const jumpStart = performance.now();
+                
+                // Detailed tracking of player jump preparation
+                const playerPrepStart = performance.now();
+                
+                // Attempt to jump
+                const jumpPhysicsStart = performance.now();
+                const jumped = this.player.jump();
+                const jumpPhysicsTime = performance.now() - jumpPhysicsStart;
+                
+                // Track trail creation
+                let trailTime = 0;
+                if (jumped) {
+                    const trailStart = performance.now();
+                    this.trailSystem.createTrail(this.player.position);
+                    trailTime = performance.now() - trailStart;
+                }
+                
+                // Log detailed performance
+                this.performanceLog.firstJump = performance.now() - jumpStart;
+                this.performanceLog.firstJumpTotal = performance.now() - this.performanceLog.constructorStart;
+                
+                console.log('First jump detailed performance:', {
+                    preparationTime: jumpPhysicsStart - playerPrepStart,
+                    jumpPhysicsTime: jumpPhysicsTime,
+                    trailCreationTime: trailTime,
+                    totalJumpDuration: this.performanceLog.firstJump,
+                    timeSinceGameStart: this.performanceLog.firstJumpTotal,
+                    memoryInfo: window.performance && window.performance.memory ? 
+                        window.performance.memory : 'Not available'
+                });
+                
+                // If successfully jumped, create a trail
+                if (jumped) {
+                    // Trail already created during performance tracking
+                }
+            } else {
+                // Normal jump after first one
+                const jumped = this.player.jump();
+                if (jumped) {
+                    this.trailSystem.createTrail(this.player.position);
+                }
             }
         } catch (error) {
             console.error('Error handling tap:', error);
@@ -651,15 +727,69 @@ class Game {
         
         if (!this.isRunning || !this.gameStarted) return;
         
+        // Track performance for the first few seconds
+        let updateStart = 0;
+        let isTracking = false;
+        
+        if (this.gameStarted && (!this.updateCount || this.updateCount < 180)) { // ~3 seconds at 60fps
+            isTracking = true;
+            updateStart = performance.now();
+            this.updateCount = this.updateCount || 0;
+            this.updateCount++;
+            
+            if (!this.updatePerformance) {
+                this.updatePerformance = {
+                    updates: [],
+                    playerUpdate: 0,
+                    obstacleUpdate: 0,
+                    collisionCheck: 0,
+                    cameraUpdate: 0,
+                    particleUpdate: 0,
+                    renderTime: 0
+                };
+            }
+            
+            // Track initial rendering performance
+            if (this.updateCount === 1) {
+                console.log('First game update - tracking initial performance');
+                // Log initial WebGL context stats if available
+                if (this.renderer && this.renderer.info) {
+                    console.log('Renderer stats:', this.renderer.info);
+                }
+            }
+        }
+        
         try {
             // Update game objects
+            let playerStart;
+            if (isTracking) playerStart = performance.now();
+            
             this.player.update();
+            
+            if (isTracking) {
+                this.updatePerformance.playerUpdate += performance.now() - playerStart;
+            }
+            
+            let obstacleStart;
+            if (isTracking) obstacleStart = performance.now();
+            
             this.obstacleManager.update();
             this.trailSystem.update();
             
+            if (isTracking) {
+                this.updatePerformance.obstacleUpdate += performance.now() - obstacleStart;
+            }
+            
             // MODIFIED: Improved collision detection with safe zone
             if (this.score > 5) { // Only start checking collisions after a grace period
+                let collisionStart;
+                if (isTracking) collisionStart = performance.now();
+                
                 this.checkCollisions();
+                
+                if (isTracking) {
+                    this.updatePerformance.collisionCheck += performance.now() - collisionStart;
+                }
             }
             
             // Increase score only when game is running
@@ -682,6 +812,25 @@ class Game {
             // Randomly spawn collectibles
             if (Math.random() < 0.002) {
                 this.spawnCollectible();
+            }
+            
+            // Log performance data at specific intervals
+            if (isTracking) {
+                const updateDuration = performance.now() - updateStart;
+                this.updatePerformance.updates.push(updateDuration);
+                
+                // Log at specific intervals and on first frame
+                if (this.updateCount === 1 || this.updateCount === 60 || this.updateCount === 120 || this.updateCount === 180) {
+                    console.log(`Performance data at update ${this.updateCount}:`, {
+                        averageUpdateTime: this.updatePerformance.updates.reduce((a, b) => a + b, 0) / this.updatePerformance.updates.length,
+                        playerUpdateTotal: this.updatePerformance.playerUpdate,
+                        obstacleUpdateTotal: this.updatePerformance.obstacleUpdate,
+                        collisionCheckTotal: this.updatePerformance.collisionCheck,
+                        lastUpdateTime: updateDuration,
+                        fps: this.currentFps,
+                        activeObjects: this.scene ? this.scene.children.length : 'unknown'
+                    });
+                }
             }
         } catch (error) {
             console.error('Error in game update:', error);
@@ -867,14 +1016,33 @@ class Game {
                 
                 // Create particle with random size
                 const size = 0.05 + Math.random() * 0.15;
-                const particle = new THREE.Mesh(
-                    new THREE.SphereGeometry(size, 8, 8),
-                    new THREE.MeshBasicMaterial({
+                
+                // FIXED: Use MeshPhongMaterial instead of MeshBasicMaterial if emissive properties are needed
+                const useFancyMaterial = Math.random() > 0.5; // Use a mix of material types for visual variety
+                
+                let material;
+                if (useFancyMaterial) {
+                    // MeshPhongMaterial supports emissive property
+                    material = new THREE.MeshPhongMaterial({
                         color: color,
                         transparent: true,
                         opacity: 0.9,
-                        emissive: color
-                    })
+                        emissive: color,
+                        emissiveIntensity: 0.7,
+                        shininess: 100
+                    });
+                } else {
+                    // MeshBasicMaterial for simpler particles (no emissive)
+                    material = new THREE.MeshBasicMaterial({
+                        color: color,
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                }
+                
+                const particle = new THREE.Mesh(
+                    new THREE.SphereGeometry(size, 8, 8),
+                    material
                 );
                 
                 // Position at collision point with slight random offset
@@ -1012,36 +1180,6 @@ class Game {
                     );
                 }
             }, 50);
-            
-            // 5. Flash screen red with pulsing effect
-            const flash = document.createElement('div');
-            flash.style.position = 'absolute';
-            flash.style.top = '0';
-            flash.style.left = '0';
-            flash.style.width = '100%';
-            flash.style.height = '100%';
-            flash.style.backgroundColor = 'rgba(255, 60, 60, 0.5)';
-            flash.style.pointerEvents = 'none';
-            flash.style.zIndex = '100';
-            document.body.appendChild(flash);
-            
-            // Pulsing animation before fade
-            let pulseCount = 0;
-            const pulseInterval = setInterval(() => {
-                flash.style.opacity = 0.3 + Math.sin(pulseCount * 0.5) * 0.2;
-                pulseCount++;
-                
-                if (pulseCount >= 8) {
-                    clearInterval(pulseInterval);
-                    
-                    // Fade out and remove
-                    flash.style.transition = 'opacity 0.5s';
-                    flash.style.opacity = '0';
-                    setTimeout(() => {
-                        document.body.removeChild(flash);
-                    }, 500);
-                }
-            }, 60);
             
         } catch (error) {
             console.error('Error playing enhanced collision effect:', error);
@@ -1303,19 +1441,73 @@ class Game {
         requestAnimationFrame(() => this.animate());
         
         try {
+            // Update FPS counter with a more stable calculation
+            this.frames++;
+            const now = performance.now();
+            
+            // Update FPS every 500ms for a smoother reading
+            if (now >= this.lastFpsUpdate + 500) {
+                // Calculate FPS with millisecond precision
+                const elapsed = now - this.lastFpsUpdate;
+                this.currentFps = Math.round((this.frames * 1000) / elapsed);
+                this.lastFpsUpdate = now;
+                this.frames = 0;
+                
+                // Update FPS display with red color as requested
+                const fpsCounter = document.getElementById('fps-counter');
+                if (fpsCounter) {
+                    fpsCounter.textContent = `FPS: ${this.currentFps}`;
+                    fpsCounter.style.color = '#ff3333'; // Ensure it's red
+                }
+            }
+            
+            // Track render performance during the initial period
+            const isInitialPeriod = this.gameStarted && this.updatePerformance && this.updateCount && this.updateCount < 180;
+            const updateStart = isInitialPeriod ? performance.now() : 0;
+            
             this.update();
             
             // Animate background color very subtly
             if (this.scene && this.scene.background) {
                 const time = Date.now() * 0.0001;
                 const hue = 0.6 + Math.sin(time) * 0.05; // Blue to purple range
+                
+                // Create a temporary color object as the target parameter required in newer Three.js
+                const targetColor = new THREE.Color();
+                // Set the background color using temporary target
+                this.scene.background.getHSL(targetColor);
                 this.scene.background.setHSL(hue, 0.6, 0.1);
+                
+                // Also update fog color if it exists
                 if (this.scene.fog && this.scene.fog.color) {
+                    const fogTargetColor = new THREE.Color();
+                    this.scene.fog.color.getHSL(fogTargetColor);
                     this.scene.fog.color.setHSL(hue, 0.6, 0.1);
                 }
             }
             
+            // Measure render time if in initial period
+            const renderStart = isInitialPeriod ? performance.now() : 0;
+            
             this.renderer.render(this.scene, this.camera);
+            
+            // Log render time during initial period
+            if (isInitialPeriod) {
+                const renderTime = performance.now() - renderStart;
+                const totalFrameTime = performance.now() - updateStart;
+                
+                this.updatePerformance.renderTime += renderTime;
+                
+                // Log detailed render stats periodically
+                if (this.updateCount % 60 === 0) {
+                    console.log(`Render stats at update ${this.updateCount}:`, {
+                        renderTime: renderTime,
+                        totalFrameTime: totalFrameTime,
+                        updateToRenderRatio: (totalFrameTime - renderTime) / totalFrameTime,
+                        cumulativeRenderTime: this.updatePerformance.renderTime
+                    });
+                }
+            }
         } catch (error) {
             console.error('Error in animation loop:', error);
         }

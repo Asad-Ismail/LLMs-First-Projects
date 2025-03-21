@@ -61,7 +61,10 @@ class TrailSystem {
             
             this.lastColorIndex = colorIndex;
             const colorChoice = this.colorPalette[colorIndex];
-            const trailColor = new THREE.Color().setHSL(colorChoice.h, colorChoice.s, colorChoice.l);
+            
+            // Use a new color object and set its HSL using the target parameter
+            const trailColor = new THREE.Color();
+            trailColor.setHSL(colorChoice.h, colorChoice.s, colorChoice.l);
             
             // MODIFIED: Create a particle-based fire trail instead of solid object
             // We'll create a cluster of particles and add a light
@@ -114,8 +117,12 @@ class TrailSystem {
             for (let i = 0; i < count; i++) {
                 // Vary the color slightly for more realistic fire effect
                 const hueVariation = (Math.random() - 0.5) * 0.1;
+                // Create target color object for getHSL
+                const baseHSL = new THREE.Color();
+                baseColor.getHSL(baseHSL);
+                
                 const color = new THREE.Color().setHSL(
-                    THREE.MathUtils.clamp(baseColor.getHSL().h + hueVariation, 0, 0.15), // Keep in fire color range
+                    THREE.MathUtils.clamp(baseHSL.h + hueVariation, 0, 0.15), // Keep in fire color range
                     0.7 + Math.random() * 0.3, // High saturation
                     0.4 + Math.random() * 0.6  // Variable brightness
                 );
@@ -127,9 +134,8 @@ class TrailSystem {
                     new THREE.MeshBasicMaterial({
                         color: color,
                         transparent: true,
-                        opacity: 0.7 + Math.random() * 0.3,
-                        emissive: color,
-                        emissiveIntensity: 0.5
+                        opacity: 0.7 + Math.random() * 0.3
+                        // Remove emissive from MeshBasicMaterial as it's not supported
                     })
                 );
                 
@@ -178,7 +184,7 @@ class TrailSystem {
                         
                         // Fire gets more yellow/white as it ages (like real fire)
                         if (lifetime > maxLife * 0.6) {
-                            const currentHsl = {};
+                            const currentHsl = new THREE.Color();
                             particle.material.color.getHSL(currentHsl);
                             
                             particle.material.color.setHSL(
@@ -382,16 +388,27 @@ class TrailSystem {
             // Reset last color
             this.lastColorIndex = -1;
             
-            // ADDED: Find and remove any remaining fire particles
+            // IMPROVED: Find and remove any remaining fire particles with better type checking
             const objectsToRemove = [];
             this.scene.traverse(object => {
-                // Find small spheres with emissive materials (likely our fire particles)
+                // Find small spheres that match our particle characteristics
                 if (object.geometry && 
                     object.geometry.type === 'SphereGeometry' && 
                     object.geometry.parameters.radius < 0.2 &&
-                    object.material &&
-                    (object.material.emissive || object.material.transparent)) {
-                    objectsToRemove.push(object);
+                    object.material) {
+                    
+                    // Check for transparent materials (our particles use transparency)
+                    if (object.material.transparent === true) {
+                        objectsToRemove.push(object);
+                    }
+                    
+                    // If it has an emissive property and it's not a supported material type,
+                    // this could be causing our errors, so remove it
+                    if (object.material.emissive && 
+                        object.material.type === 'MeshBasicMaterial') {
+                        console.warn('Found MeshBasicMaterial with invalid emissive property - removing');
+                        objectsToRemove.push(object);
+                    }
                 }
             });
             
