@@ -136,7 +136,7 @@ class Game {
                 color: 0x3333aa,
                 shininess: 80,
                 specular: 0x111111,
-                side: THREE.DoubleSide
+                side: THREE.FrontSide  // Changed from THREE.DoubleSide to reduce triangle count
             });
             
             // Create and position the ground mesh

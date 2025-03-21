@@ -156,7 +156,7 @@ class TrailSystem {
         this.playerTrailsOnly = playerOnly;
     }
     
-    createTrail(position, objectType = 'player', customColor = null, particleCount = 3) {
+    createTrail(position, objectType = 'player', customColor = null, particleCount = 1) {
         try {            
             // Only create trails if the feature is enabled
             if (!this.trailsEnabled) return null;
@@ -223,7 +223,7 @@ class TrailSystem {
     }
     
     // Create fire particles using the particle system
-    createFireParticles(position, baseColor, count = 5) {
+    createFireParticles(position, baseColor, count = 1) {
         try {
             // Create regular fire particles
             for (let i = 0; i < count; i++) {
@@ -344,7 +344,7 @@ class TrailSystem {
                 const trailColor = new THREE.Color().setHSL(colorInfo.h, colorInfo.s, colorInfo.l);
                 
                 // Create trail with 'player' type
-                this.createTrail(trailPosition, 'player', trailColor, 3); // Reduced particle count parameter from default (5) to 3
+                this.createTrail(trailPosition, 'player', trailColor, 1); // Reduced particle count parameter from default (5) to 3
                 
                 // Update last creation time
                 this.lastTrailTime = Date.now();
