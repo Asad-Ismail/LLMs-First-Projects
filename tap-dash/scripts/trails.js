@@ -6,7 +6,7 @@ class TrailSystem {
         this.scene = scene;
         this.trails = [];
         this.trailSpeed = 0.1; // Same as obstacle speed
-        this.maxTrails = 2; // Reduced from 20 to 2 to improve performance
+        this.maxTrails = 1; // Reduced from 20 to 1 to improve performance
         
         // ADDED: Create a continuous trail effect
         this.continuousTrail = false;
