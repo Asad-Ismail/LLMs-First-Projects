@@ -61,3 +61,14 @@ this.renderer.shadowMap.enabled = true is set, but no lights have castShadow = t
 Optimization: Set this.renderer.shadowMap.enabled = false.
 Impact: Avoids potential shadow-related overhead, though currently mini
 
+
+5. Simplify Ground Material
+Problem: The ground uses a PlaneGeometry with 20x100 divisions and a MeshPhongMaterial set to THREE.DoubleSide, rendering both sides. This doubles the triangle count from 4,000 to 8,000, significantly contributing to the 8,780 total triangles reported.
+Solution: Modify the ground material to render only the front side, as the back is not visible in gameplay.
+javascript
+Impact: Reduces the ground’s triangle count to 4,000, cutting the scene’s total triangles by nearly half (to ~4,632), easing the rendering load.
+
+6. Simplify Ground Geometry
+Problem: The ground’s 20x100 divisions (4,000 triangles single-sided) are excessive for a flat surface, adding unnecessary rendering overhead.
+Solution: Reduce divisions to 10x50, maintaining visual quality with fewer polygons.
+Impact: Lowers the ground’s triangle count to 1,000 (single-sided), further reducing the total to ~2,632 triangles, improving performance with minimal visual compromise.
