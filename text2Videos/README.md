@@ -10,4 +10,4 @@ In short goign direclty from text to videos is hard, it hard to control each asp
 5. Add audio to those clips, this will be added here in the future right now you can join the videos and add free audio from youtube or from speech to text models.
 
 we will demonstrate this workflow to create youtube shorts. shorts are right candidate for this workflow since text/Image to video models can only generate videos of small duration in high quality due to high computational requirements and in turn cost. We will be using replicate to use I/T 2 Video models for now but we can expand this to out serving or some other servings of these models.
-Let begin!
+Let's begin!
