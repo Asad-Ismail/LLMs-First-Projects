@@ -33,36 +33,23 @@ class Game {
         this.speedIncreaseAmount = 0.008; // Reduced from 0.01
         this.initialGracePeriod = 3; // Seconds of grace period at start
         
+        // Flag to track if assets are fully loaded
+        this.assetsLoaded = false;
+        this.initialLoadComplete = false;
+        
         try {
-            // Set up Three.js scene
+            // Set up base Three.js scene
             const sceneStart = performance.now();
             this.setupScene();
             this.performanceLog.setupScene = performance.now() - sceneStart;
             
-            // Add environment objects (stars, mountains)
-            const envStart = performance.now();
-            this.addEnvironmentObjects();
-            this.performanceLog.addEnvironment = performance.now() - envStart;
+            // Defer heavy loading until after first frame renders
+            // This helps prevent initial FPS drops
+            setTimeout(() => {
+                this.loadGameAssets();
+            }, 100);
             
-            // Initialize game objects
-            const playerStart = performance.now();
-            this.player = new Player(this.scene);
-            this.performanceLog.playerInit = performance.now() - playerStart;
-            
-            const obstacleStart = performance.now();
-            this.obstacleManager = new ObstacleManager(this.scene);
-            this.performanceLog.obstacleInit = performance.now() - obstacleStart;
-            
-            const trailStart = performance.now();
-            this.trailSystem = new TrailSystem(this.scene);
-            this.performanceLog.trailInit = performance.now() - trailStart;
-            
-            // Set up controls
-            const controlsStart = performance.now();
-            this.setupControls();
-            this.performanceLog.setupControls = performance.now() - controlsStart;
-            
-            // Start animation loop
+            // Start animation loop immediately for responsive UI
             this.animate();
             
             // Make the game instance globally accessible for debugging
@@ -757,6 +744,11 @@ class Game {
                     console.log('Renderer stats:', this.renderer.info);
                 }
             }
+            
+            // ADDED: Enhanced profiling around the spike area (updates 50-70)
+            if (this.updateCount >= 50 && this.updateCount <= 70) {
+                this.captureDetailedProfile(this.updateCount);
+            }
         }
         
         try {
@@ -892,40 +884,99 @@ class Game {
     
     checkCollisions() {
         try {
-            if (!this.player || !this.obstacleManager) return;
-            
-            // Check collision with each obstacle
             const obstacles = this.obstacleManager.getObstacles();
+            
             for (const obstacle of obstacles) {
-                if (this.detailedCollisionCheck(
-                    this.player.position, obstacle.position,
-                    this.player.size, obstacle.size
-                )) {
-                    console.log("Collision detected at positions:", 
-                        this.player.position, obstacle.position);
-                    
-                    // Calculate exact collision point for effect
-                    const collisionPoint = {
-                        x: (this.player.position.x + obstacle.position.x) / 2,
-                        y: (this.player.position.y + obstacle.position.y) / 2,
-                        z: (this.player.position.z + obstacle.position.z) / 2
-                    };
-                    
-                    // Play enhanced collision effect
-                    this.playEnhancedCollisionEffect(collisionPoint, obstacle.position);
-                    
-                    // Show brief slow-motion effect before game over
-                    this.showSlowMotionEffect(() => {
-                        this.gameOver();
-                    });
-                    return;
+                // Adjust collision parameters based on obstacle type
+                let collisionScale = 1.0;
+                
+                // Make spike hitboxes slightly smaller for fairness
+                if (obstacle.type === 'spike') {
+                    collisionScale = 0.9;
+                }
+                
+                // Make barrier hitboxes match their visual shape better
+                if (obstacle.type === 'barrier') {
+                    // Adjust the hitbox to be wider but shorter
+                    obstacle.size.y *= 0.9;
+                }
+                
+                const scaledSize = {
+                    x: obstacle.size.x * collisionScale,
+                    y: obstacle.size.y * collisionScale,
+                    z: obstacle.size.z * collisionScale
+                };
+                
+                // Check for collision
+                if (this.detailedCollisionCheck(this.player.position, obstacle.position, this.player.size, scaledSize)) {
+                    // Handle collision
+                    this.handleCollision(obstacle);
+                    return true;
                 }
             }
             
-            // REMOVED: Trail collision detection
-            // Trails are now purely visual effects and not considered as collidable objects
+            return false;
         } catch (error) {
             console.error('Error checking collisions:', error);
+            return false;
+        }
+    }
+    
+    // When collision happens, create visual effect
+    handleCollision(obstacle) {
+        try {
+            console.log('Collision with', obstacle.type);
+            
+            // Add explosion/impact effect based on obstacle type
+            this.obstacleManager.createCollisionEffect(obstacle);
+            
+            // Apply different effects based on obstacle type
+            switch(obstacle.type) {
+                case 'asteroid':
+                    // Stronger shake for asteroid impacts
+                    this.addScreenShake(0.5);
+                    
+                    // Show particle impact
+                    this.showAsteroidImpact();
+                    break;
+                    
+                case 'wormhole':
+                    // Visual distortion for wormhole
+                    this.showWormholeEffect();
+                    
+                    // Subtle shake
+                    this.addScreenShake(0.2);
+                    break;
+                    
+                case 'planet':
+                    // Medium shake
+                    this.addScreenShake(0.4);
+                    
+                    // Show gravitational effect
+                    this.showPlanetaryImpact();
+                    break;
+                    
+                case 'satellite':
+                    // Light shake
+                    this.addScreenShake(0.3);
+                    
+                    // Show electrical sparks
+                    this.showSatelliteImpact();
+                    break;
+                    
+                default:
+                    // Default shake
+                    this.addScreenShake(0.3);
+            }
+            
+            // Show brief slow-motion effect before game over
+            this.showSlowMotionEffect(() => {
+                this.gameOver();
+            });
+        } catch (error) {
+            console.error('Error handling collision:', error);
+            // Fallback to direct game over
+            this.gameOver();
         }
     }
     
@@ -1467,6 +1518,43 @@ class Game {
             
             this.update();
             
+            // ADDED: Track pre-render state for detailed profiling around the spike area
+            let preRenderMemory = null;
+            let materialCompilationStart = 0;
+            let preRenderStart = 0;
+            
+            if (isInitialPeriod && this.updateCount >= 55 && this.updateCount <= 65) {
+                preRenderMemory = window.performance && window.performance.memory ? 
+                    {...window.performance.memory} : null;
+                
+                preRenderStart = performance.now();
+                
+                // Log more details about renderer state before rendering
+                console.log(`PRE-RENDER at update ${this.updateCount}:`, {
+                    updateCount: this.updateCount,
+                    renderCalls: this.renderer.info?.render?.calls || 'unknown',
+                    triangles: this.renderer.info?.render?.triangles || 'unknown',
+                    geometries: this.renderer.info?.memory?.geometries || 'unknown',
+                    textures: this.renderer.info?.memory?.textures || 'unknown',
+                    programs: this.renderer.info?.programs?.length || 'unknown'
+                });
+                
+                // Force material update on all objects to detect compilation spikes
+                materialCompilationStart = performance.now();
+                this.scene.traverse(object => {
+                    if (object.material) {
+                        if (Array.isArray(object.material)) {
+                            object.material.forEach(mat => {
+                                if (mat.needsUpdate !== undefined) mat.needsUpdate = true;
+                            });
+                        } else if (object.material.needsUpdate !== undefined) {
+                            object.material.needsUpdate = true;
+                        }
+                    }
+                });
+                console.log(`Material compilation time: ${performance.now() - materialCompilationStart}ms`);
+            }
+            
             // Animate background color very subtly
             if (this.scene && this.scene.background) {
                 const time = Date.now() * 0.0001;
@@ -1489,9 +1577,43 @@ class Game {
             // Measure render time if in initial period
             const renderStart = isInitialPeriod ? performance.now() : 0;
             
+            // ADDED: Track detailed render phases for spike identification
+            if (isInitialPeriod && this.updateCount >= 55 && this.updateCount <= 65) {
+                // Break down render into sub-steps to identify the bottleneck
+                const renderPrepStart = performance.now();
+                // Renderer internal preparation steps would happen here in Three.js
+                const renderPrepTime = performance.now() - renderPrepStart;
+                
+                // Log the preparation time
+                if (renderPrepTime > 1) {
+                    console.log(`Render preparation time: ${renderPrepTime}ms`);
+                }
+            }
+            
             this.renderer.render(this.scene, this.camera);
             
-            // Log render time during initial period
+            // ADDED: Post-render logging for the spike area
+            if (isInitialPeriod && this.updateCount >= 55 && this.updateCount <= 65) {
+                const renderTime = performance.now() - renderStart;
+                const postRenderMemory = window.performance && window.performance.memory ? 
+                    {...window.performance.memory} : null;
+                
+                console.log(`POST-RENDER at update ${this.updateCount}:`, {
+                    updateCount: this.updateCount,
+                    totalRenderTime: renderTime,
+                    preRenderToPostRender: performance.now() - preRenderStart,
+                    memorySizeBefore: preRenderMemory ? (preRenderMemory.usedJSHeapSize / 1000000).toFixed(2) + 'MB' : 'unknown',
+                    memorySizeAfter: postRenderMemory ? (postRenderMemory.usedJSHeapSize / 1000000).toFixed(2) + 'MB' : 'unknown',
+                    memoryDelta: (preRenderMemory && postRenderMemory) ? 
+                        ((postRenderMemory.usedJSHeapSize - preRenderMemory.usedJSHeapSize) / 1000000).toFixed(2) + 'MB' : 'unknown'
+                });
+                
+                if (renderTime > 50) {
+                    console.warn(`HIGH RENDER TIME DETECTED: ${renderTime}ms at update ${this.updateCount}`);
+                }
+            }
+            
+            // Add back original render time logging
             if (isInitialPeriod) {
                 const renderTime = performance.now() - renderStart;
                 const totalFrameTime = performance.now() - updateStart;
@@ -1511,5 +1633,308 @@ class Game {
         } catch (error) {
             console.error('Error in animation loop:', error);
         }
+    }
+
+    // ADDED: Detailed profiling function to diagnose rendering spikes
+    captureDetailedProfile(updateCount) {
+        try {
+            const now = performance.now();
+            const memory = window.performance && window.performance.memory ? 
+                window.performance.memory : { usedJSHeapSize: 'unavailable' };
+            
+            // Scene statistics
+            const sceneStats = {
+                totalObjects: this.scene.children.length,
+                visibleObjects: 0,
+                objectTypes: {},
+                materialTypes: {},
+                geometryTypes: {},
+                textureCount: 0
+            };
+            
+            // Count object types and materials
+            this.scene.traverse(object => {
+                // Only count visible objects
+                if (object.visible === false) return;
+                
+                sceneStats.visibleObjects++;
+                
+                // Count by object type
+                const type = object.type || 'Unknown';
+                sceneStats.objectTypes[type] = (sceneStats.objectTypes[type] || 0) + 1;
+                
+                // Count materials
+                if (object.material) {
+                    const materials = Array.isArray(object.material) ? object.material : [object.material];
+                    materials.forEach(material => {
+                        if (!material) return;
+                        const matType = material.type || 'Unknown';
+                        sceneStats.materialTypes[matType] = (sceneStats.materialTypes[matType] || 0) + 1;
+                        
+                        // Count textures
+                        if (material.map) sceneStats.textureCount++;
+                        if (material.normalMap) sceneStats.textureCount++;
+                        if (material.specularMap) sceneStats.textureCount++;
+                        if (material.emissiveMap) sceneStats.textureCount++;
+                    });
+                }
+                
+                // Count geometries
+                if (object.geometry) {
+                    const geoType = object.geometry.type || 'Unknown';
+                    sceneStats.geometryTypes[geoType] = (sceneStats.geometryTypes[geoType] || 0) + 1;
+                }
+            });
+            
+            // Renderer info
+            const rendererInfo = this.renderer.info ? {
+                render: {...this.renderer.info.render},
+                memory: {...this.renderer.info.memory},
+                programs: this.renderer.info.programs ? this.renderer.info.programs.length : 0
+            } : 'Renderer info unavailable';
+            
+            // Collect obstacle and particle stats
+            const gameObjectStats = {
+                obstacles: this.obstacleManager ? this.obstacleManager.obstacles.length : 0,
+                trails: this.trailSystem ? this.trailSystem.trails.length : 0,
+                particles: 0  // We'll count these below
+            };
+            
+            // Count particles specifically (they're often the cause of performance issues)
+            this.scene.traverse(object => {
+                if (object.geometry && 
+                    object.geometry.type === 'SphereGeometry' &&
+                    object.geometry.parameters && 
+                    object.geometry.parameters.radius < 0.2) {
+                    gameObjectStats.particles++;
+                }
+            });
+            
+            // Log everything with clear formatting
+            console.log(`===== DETAILED PROFILE AT UPDATE ${updateCount} =====`);
+            console.log(`Time: ${now.toFixed(2)}ms since start`);
+            console.log(`Memory: ${(memory.usedJSHeapSize / 1000000).toFixed(2)}MB used`);
+            console.log(`FPS: ${this.currentFps}`);
+            console.log(`Scene objects: ${sceneStats.totalObjects} total, ${sceneStats.visibleObjects} visible`);
+            console.log(`Game objects: ${gameObjectStats.obstacles} obstacles, ${gameObjectStats.trails} trails, ${gameObjectStats.particles} particles`);
+            console.log(`Object types:`, sceneStats.objectTypes);
+            console.log(`Material types:`, sceneStats.materialTypes);
+            console.log(`Geometry types:`, sceneStats.geometryTypes);
+            console.log(`Renderer stats:`, rendererInfo);
+            console.log(`====================================`);
+            
+            // Return the stats so they can be stored if needed
+            return {
+                updateCount,
+                timestamp: now,
+                memory,
+                fps: this.currentFps,
+                sceneStats,
+                gameObjectStats,
+                rendererInfo
+            };
+        } catch (error) {
+            console.error('Error capturing detailed profile:', error);
+            return null;
+        }
+    }
+
+    // Add this method to the Game class
+    addScreenShake(intensity = 0.3) {
+        try {
+            // Store original camera position
+            const originalPosition = {
+                x: this.camera.position.x,
+                y: this.camera.position.y,
+                z: this.camera.position.z
+            };
+            
+            // Animation variables
+            let shakeTime = 0;
+            const shakeDuration = 0.5; // seconds
+            const maxShakeTime = shakeDuration * 60; // frames (assuming 60fps)
+            
+            // Create shake animation function
+            const shakeCamera = () => {
+                if (shakeTime >= maxShakeTime) {
+                    // Restore original position
+                    this.camera.position.set(originalPosition.x, originalPosition.y, originalPosition.z);
+                    return;
+                }
+                
+                // Calculate shake intensity based on remaining time (gradually decrease)
+                const currentIntensity = intensity * (1 - (shakeTime / maxShakeTime));
+                
+                // Apply random offset
+                this.camera.position.set(
+                    originalPosition.x + (Math.random() - 0.5) * currentIntensity,
+                    originalPosition.y + (Math.random() - 0.5) * currentIntensity,
+                    originalPosition.z + (Math.random() - 0.5) * currentIntensity * 0.5 // Less shake in z direction
+                );
+                
+                shakeTime++;
+                requestAnimationFrame(shakeCamera);
+            };
+            
+            // Start shake animation
+            shakeCamera();
+        } catch (error) {
+            console.error('Error adding screen shake:', error);
+        }
+    }
+
+    // Add this method to load assets progressively
+    loadGameAssets() {
+        try {
+            console.log('Loading game assets progressively...');
+            
+            // Setup loading screen or indicator
+            this.showLoadingIndicator(true);
+            
+            // Add environment objects with minimal initial geometry
+            this.addEnvironmentObjects();
+            
+            // Queue remaining asset loading
+            setTimeout(() => {
+                // Initialize player
+                const playerStart = performance.now();
+                this.player = new Player(this.scene);
+                this.performanceLog.playerInit = performance.now() - playerStart;
+                
+                setTimeout(() => {
+                    // Initialize obstacle manager
+                    const obstacleStart = performance.now();
+                    this.obstacleManager = new ObstacleManager(this.scene);
+                    this.performanceLog.obstacleInit = performance.now() - obstacleStart;
+                    
+                    setTimeout(() => {
+                        // Initialize trail system
+                        const trailStart = performance.now();
+                        this.trailSystem = new TrailSystem(this.scene);
+                        this.performanceLog.trailInit = performance.now() - trailStart;
+                        
+                        // Setup controls last
+                        const controlsStart = performance.now();
+                        this.setupControls();
+                        this.performanceLog.setupControls = performance.now() - controlsStart;
+                        
+                        // All assets loaded
+                        this.assetsLoaded = true;
+                        this.initialLoadComplete = true;
+                        this.showLoadingIndicator(false);
+                        
+                        console.log('All game assets loaded successfully');
+                    }, 100);
+                }, 100);
+            }, 100);
+            
+        } catch (error) {
+            console.error('Error loading game assets:', error);
+            // Hide loading indicator and show error
+            this.showLoadingIndicator(false);
+            alert('Failed to load some game assets. Game may not function correctly.');
+        }
+    }
+
+    // Add a simple loading indicator
+    showLoadingIndicator(show) {
+        try {
+            let loadingElement = document.getElementById('loading-indicator');
+            
+            if (show) {
+                if (!loadingElement) {
+                    loadingElement = document.createElement('div');
+                    loadingElement.id = 'loading-indicator';
+                    loadingElement.innerHTML = 'Loading Game Assets...';
+                    loadingElement.style.cssText = `
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        background-color: rgba(0, 0, 0, 0.7);
+                        color: white;
+                        padding: 15px 30px;
+                        border-radius: 10px;
+                        font-family: Arial, sans-serif;
+                        z-index: 1000;
+                    `;
+                    document.body.appendChild(loadingElement);
+                }
+            } else if (loadingElement) {
+                document.body.removeChild(loadingElement);
+            }
+        } catch (error) {
+            console.error('Error showing/hiding loading indicator:', error);
+        }
+    }
+
+    // Add these special effects methods
+    showAsteroidImpact() {
+        try {
+            // Flash the screen orange/red briefly
+            const flash = document.createElement('div');
+            flash.style.position = 'absolute';
+            flash.style.top = '0';
+            flash.style.left = '0';
+            flash.style.width = '100%';
+            flash.style.height = '100%';
+            flash.style.backgroundColor = 'rgba(255, 100, 50, 0.4)';
+            flash.style.zIndex = '1000';
+            
+            document.body.appendChild(flash);
+            
+            setTimeout(() => {
+                flash.style.transition = 'opacity 0.5s';
+                flash.style.opacity = '0';
+                setTimeout(() => {
+                    document.body.removeChild(flash);
+                }, 500);
+            }, 100);
+        } catch (error) {
+            console.error('Error showing asteroid impact effect:', error);
+        }
+    }
+
+    showWormholeEffect() {
+        try {
+            // Create a ripple/distortion effect
+            const distortion = document.createElement('div');
+            distortion.style.position = 'absolute';
+            distortion.style.top = '0';
+            distortion.style.left = '0';
+            distortion.style.width = '100%';
+            distortion.style.height = '100%';
+            distortion.style.backgroundImage = 'radial-gradient(circle, rgba(100, 50, 255, 0.7) 0%, rgba(100, 50, 255, 0) 70%)';
+            distortion.style.zIndex = '1000';
+            distortion.style.opacity = '0';
+            distortion.style.transition = 'transform 1s, opacity 1s';
+            
+            document.body.appendChild(distortion);
+            
+            // Animate the distortion
+            setTimeout(() => {
+                distortion.style.opacity = '1';
+                distortion.style.transform = 'scale(2)';
+                
+                setTimeout(() => {
+                    distortion.style.opacity = '0';
+                    setTimeout(() => {
+                        document.body.removeChild(distortion);
+                    }, 1000);
+                }, 200);
+            }, 10);
+        } catch (error) {
+            console.error('Error showing wormhole effect:', error);
+        }
+    }
+
+    showPlanetaryImpact() {
+        // Implementation of planetary impact effect
+        // Similar to previous effects but with different visuals
+    }
+
+    showSatelliteImpact() {
+        // Implementation of satellite impact effect
+        // Electrical sparks or similar visuals
     }
 }
