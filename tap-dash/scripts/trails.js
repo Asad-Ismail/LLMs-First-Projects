@@ -1,14 +1,15 @@
 /**
- * Trail system for Tap Dash
+ * Trail system for Tap Dash - Optimized Version
+ * Using BufferGeometry and Points for better performance
  */
 class TrailSystem {
     constructor(scene) {
         this.scene = scene;
         this.trails = [];
         this.trailSpeed = 0.1; // Same as obstacle speed
-        this.maxTrails = 1; // Reduced from 20 to 1 to improve performance
+        this.maxTrails = 1; // Reduced to improve performance
         
-        // ADDED: Create a continuous trail effect
+        // Trail effect configuration
         this.continuousTrail = false;
         this.trailInterval = null;
         this.lastTrailTime = 0;
@@ -27,9 +28,122 @@ class TrailSystem {
         // Keep track of last color to avoid repeats
         this.lastColorIndex = -1;
         
-        // ADDED: Flag to ensure trails only apply to player
+        // Flags for trail behavior
         this.trailsEnabled = true;
-        this.playerTrailsOnly = true; // NEW: Set to true to only show trails for player
+        this.playerTrailsOnly = true;
+        
+        // Create particle system for all fire particles
+        this.initParticleSystem();
+        
+        // Trail lights (separate from particles)
+        this.trailLights = [];
+    }
+    
+    initParticleSystem() {
+        // Max number of particles active at any time
+        this.maxParticles = 100;
+        
+        // Arrays to hold particle data
+        this.positions = new Float32Array(this.maxParticles * 3);
+        this.colors = new Float32Array(this.maxParticles * 3);
+        this.sizes = new Float32Array(this.maxParticles);
+        
+        // Array to track particle state
+        this.particles = [];
+        for (let i = 0; i < this.maxParticles; i++) {
+            this.particles.push({
+                active: false,
+                position: new THREE.Vector3(),
+                velocity: new THREE.Vector3(),
+                color: new THREE.Color(),
+                size: 0,
+                lifetime: 0,
+                maxLifetime: 0,
+                index: i // Index in the arrays
+            });
+        }
+        
+        // Create geometry with buffers
+        this.geometry = new THREE.BufferGeometry();
+        this.geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
+        this.geometry.setAttribute('color', new THREE.BufferAttribute(this.colors, 3));
+        this.geometry.setAttribute('size', new THREE.BufferAttribute(this.sizes, 1));
+        
+        // Create a particle texture (simple circle)
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const context = canvas.getContext('2d');
+        
+        // Draw a circular gradient
+        const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+        gradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.8)');
+        gradient.addColorStop(0.7, 'rgba(255, 220, 180, 0.5)');
+        gradient.addColorStop(1.0, 'rgba(255, 180, 0, 0.0)');
+        
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, 64, 64);
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        
+        // Create the material for particles
+        this.material = new THREE.PointsMaterial({
+            size: 0.3,
+            map: texture,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            transparent: true,
+            vertexColors: true
+        });
+        
+        // Create the particle system and add to scene
+        this.particleSystem = new THREE.Points(this.geometry, this.material);
+        this.scene.add(this.particleSystem);
+        
+        // Initialize with all particles inactive
+        this.activeParticleCount = 0;
+    }
+    
+    // Find an inactive particle to use, or reuse the oldest one if all are active
+    getNextParticle() {
+        // First, try to find an inactive particle
+        for (let i = 0; i < this.particles.length; i++) {
+            if (!this.particles[i].active) {
+                return this.particles[i];
+            }
+        }
+        
+        // If all particles are active, reuse the oldest one
+        let oldestIndex = 0;
+        let oldestLifetime = 0;
+        
+        for (let i = 0; i < this.particles.length; i++) {
+            if (this.particles[i].lifetime > oldestLifetime) {
+                oldestLifetime = this.particles[i].lifetime;
+                oldestIndex = i;
+            }
+        }
+        
+        return this.particles[oldestIndex];
+    }
+    
+    // Set values for a single particle in the buffer arrays
+    updateParticleBuffers(particle) {
+        const i = particle.index;
+        
+        // Update position
+        this.positions[i * 3] = particle.position.x;
+        this.positions[i * 3 + 1] = particle.position.y;
+        this.positions[i * 3 + 2] = particle.position.z;
+        
+        // Update color
+        this.colors[i * 3] = particle.color.r;
+        this.colors[i * 3 + 1] = particle.color.g;
+        this.colors[i * 3 + 2] = particle.color.b;
+        
+        // Update size
+        this.sizes[i] = particle.size;
     }
     
     // ADDED: Method to enable/disable trails
@@ -52,7 +166,6 @@ class TrailSystem {
             // Store the last trail time for continuous trail effect
             this.lastTrailTime = Date.now();
             
-            // MODIFIED: Use fire-like colors
             // Pick a color from the palette (avoid repeating the last color)
             let colorIndex;
             do {
@@ -62,17 +175,12 @@ class TrailSystem {
             this.lastColorIndex = colorIndex;
             const colorChoice = this.colorPalette[colorIndex];
             
-            // Use a new color object and set its HSL using the target parameter
+            // Use a new color object and set its HSL
             const trailColor = new THREE.Color();
             trailColor.setHSL(colorChoice.h, colorChoice.s, colorChoice.l);
             
-            // MODIFIED: Create a particle-based fire trail instead of solid object
-            // We'll create a cluster of particles and add a light
-            
-            // FIXED: Create a fixed position directly behind the player
-            // Clone the position to avoid modifying the original
+            // Create a fixed position directly behind the player
             const trailPos = new THREE.Vector3().copy(position);
-            // Always place the trail behind the player (negative z direction)
             trailPos.z -= 0.2;
             
             // Create a point light at the trail position for glow effect
@@ -80,10 +188,10 @@ class TrailSystem {
             trailLight.position.copy(trailPos);
             this.scene.add(trailLight);
             
-            // Create a trail object to track the position (but no visible mesh)
+            // Create a trail object to track the position (with light)
             const trailPosition = new THREE.Vector3().copy(trailPos);
             
-            // Add to trails array - instead of a mesh, we'll track the light and position
+            // Add to trails array
             this.trails.push({
                 light: trailLight,
                 position: trailPosition,
@@ -94,8 +202,8 @@ class TrailSystem {
                 maxLifetime: 50 + Math.floor(Math.random() * 20)
             });
             
-            // MODIFIED: Create a dense burst of fire particles
-            this.addFireParticles(trailPosition, trailColor, 1); // Reduced from 3 to 1 particles for performance
+            // Create fire particles for this trail
+            this.createFireParticles(trailPosition, trailColor, 8);
             
             // If we have too many trails, remove the oldest ones
             if (this.trails.length > this.maxTrails) {
@@ -110,158 +218,92 @@ class TrailSystem {
         }
     }
     
-    // MODIFIED: Create fire particles instead of regular particles
-    addFireParticles(position, baseColor, count = 1) { // Default reduced from 3 to 1 for performance
+    // Create fire particles using the particle system
+    createFireParticles(position, baseColor, count = 8) {
         try {
-            // Create a burst of fire-like particles
+            // Create regular fire particles
             for (let i = 0; i < count; i++) {
+                const particle = this.getNextParticle();
+                
                 // Vary the color slightly for more realistic fire effect
                 const hueVariation = (Math.random() - 0.5) * 0.1;
-                // Create target color object for getHSL
-                const baseHSL = new THREE.Color();
+                const baseHSL = { h: 0, s: 0, l: 0 };
                 baseColor.getHSL(baseHSL);
                 
                 const color = new THREE.Color().setHSL(
-                    THREE.MathUtils.clamp(baseHSL.h + hueVariation, 0, 0.15), // Keep in fire color range
-                    0.7 + Math.random() * 0.3, // High saturation
-                    0.4 + Math.random() * 0.6  // Variable brightness
+                    THREE.MathUtils.clamp(baseHSL.h + hueVariation, 0, 0.15),
+                    0.7 + Math.random() * 0.3,
+                    0.4 + Math.random() * 0.6
                 );
                 
-                // Create various sized particles - INCREASED SIZE to compensate for fewer particles
-                const size = 0.12 + Math.random() * 0.18; // Increased from 0.05-0.20 to 0.12-0.30
-                const particle = new THREE.Mesh(
-                    new THREE.SphereGeometry(size, 8, 8),
-                    new THREE.MeshBasicMaterial({
-                        color: color,
-                        transparent: true,
-                        opacity: 0.8 + Math.random() * 0.2 // Increased from 0.7-1.0 to 0.8-1.0
-                        // Remove emissive from MeshBasicMaterial as it's not supported
-                    })
-                );
-                
-                // Position with variety around trail point
-                const spread = 0.15; // Controls how spread out the fire is
+                // Set up particle
+                particle.active = true;
                 particle.position.set(
-                    position.x + (Math.random() - 0.5) * spread,
-                    position.y + (Math.random() - 0.5) * spread,
-                    position.z + (Math.random() - 0.5) * spread * 0.5 // Less spread in z direction
+                    position.x + (Math.random() - 0.5) * 0.15,
+                    position.y + (Math.random() - 0.5) * 0.15,
+                    position.z + (Math.random() - 0.5) * 0.07
                 );
                 
-                // Add random velocity vectors - fire tends to rise and move randomly
-                const velocity = {
-                    x: (Math.random() - 0.5) * 0.02,
-                    y: 0.005 + Math.random() * 0.015, // Upward bias for fire
-                    z: (Math.random() - 0.5) * 0.02
-                };
+                particle.velocity.set(
+                    (Math.random() - 0.5) * 0.02,
+                    0.005 + Math.random() * 0.015,
+                    (Math.random() - 0.5) * 0.02
+                );
                 
-                // Add to scene
-                this.scene.add(particle);
+                particle.color.copy(color);
+                particle.size = 0.15 + Math.random() * 0.2;
+                particle.lifetime = 0;
+                particle.maxLifetime = 30 + Math.floor(Math.random() * 20);
                 
-                // Animate and remove after time period
-                let lifetime = 0;
-                const maxLife = 30 + Math.floor(Math.random() * 20); // Longer lifetime for fire effect
+                // Update the buffer arrays
+                this.updateParticleBuffers(particle);
                 
-                const animateFireParticle = () => {
-                    lifetime++;
-                    
-                    if (lifetime < maxLife) {
-                        // Move based on velocity
-                        particle.position.x += velocity.x;
-                        particle.position.y += velocity.y;
-                        particle.position.z += velocity.z;
-                        
-                        // Slow down over time but keep rising
-                        velocity.x *= 0.97;
-                        velocity.y = Math.max(0.001, velocity.y * 0.98); // Maintain some upward movement
-                        velocity.z *= 0.97;
-                        
-                        // Fade out
-                        particle.material.opacity = 0.8 * (1 - lifetime / maxLife);
-                        
-                        // Fire particles should get smaller as they rise
-                        const scaleRate = 0.97 + (Math.random() * 0.02);
-                        particle.scale.multiplyScalar(scaleRate);
-                        
-                        // Fire gets more yellow/white as it ages (like real fire)
-                        if (lifetime > maxLife * 0.6) {
-                            const currentHsl = new THREE.Color();
-                            particle.material.color.getHSL(currentHsl);
-                            
-                            particle.material.color.setHSL(
-                                Math.min(0.15, currentHsl.h + 0.001), // Shift toward yellow
-                                Math.max(0.5, currentHsl.s - 0.01),   // Reduce saturation
-                                Math.min(0.9, currentHsl.l + 0.01)    // Increase brightness
-                            );
-                        }
-                        
-                        requestAnimationFrame(animateFireParticle);
-                    } else {
-                        this.scene.remove(particle);
-                    }
-                };
-                
-                animateFireParticle();
+                // Increase the active count if needed
+                if (this.activeParticleCount < this.maxParticles) {
+                    this.activeParticleCount++;
+                }
             }
             
-            // Add a few ember particles that shoot up more dramatically
-            for (let i = 0; i < 1; i++) { // Reduced from 3 to 1 ember for performance
-                const ember = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 6, 6), // Increased from 0.03-0.05 to 0.05-0.09
-                    new THREE.MeshBasicMaterial({
-                        color: new THREE.Color().setHSL(0.1, 0.9, 0.8), // Bright yellow-orange
-                        transparent: true,
-                        opacity: 0.95 // Increased from 0.9 to 0.95
-                    })
+            // Create a few ember particles
+            for (let i = 0; i < 2; i++) {
+                const particle = this.getNextParticle();
+                
+                // Embers are brighter and smaller
+                const color = new THREE.Color().setHSL(0.1, 0.9, 0.8); // Bright yellow-orange
+                
+                // Set up particle
+                particle.active = true;
+                particle.position.set(
+                    position.x + (Math.random() - 0.5) * 0.05,
+                    position.y + 0.05,
+                    position.z + (Math.random() - 0.5) * 0.05
                 );
                 
-                // Position at the base of the fire
-                ember.position.copy(position);
-                ember.position.y += 0.05;
+                particle.velocity.set(
+                    (Math.random() - 0.5) * 0.04,
+                    0.02 + Math.random() * 0.03,
+                    (Math.random() - 0.5) * 0.04
+                );
                 
-                // Add to scene
-                this.scene.add(ember);
+                particle.color.copy(color);
+                particle.size = 0.07 + Math.random() * 0.05;
+                particle.lifetime = 0;
+                particle.maxLifetime = 40 + Math.floor(Math.random() * 20);
                 
-                // More dramatic upward motion
-                const emberVelocity = {
-                    x: (Math.random() - 0.5) * 0.04,
-                    y: 0.02 + Math.random() * 0.03, // Stronger upward motion
-                    z: (Math.random() - 0.5) * 0.04
-                };
+                // Update the buffer arrays
+                this.updateParticleBuffers(particle);
                 
-                // Animate ember
-                let emberLife = 0;
-                const emberMaxLife = 40 + Math.floor(Math.random() * 20);
-                
-                const animateEmber = () => {
-                    emberLife++;
-                    
-                    if (emberLife < emberMaxLife) {
-                        // Move based on velocity
-                        ember.position.x += emberVelocity.x;
-                        ember.position.y += emberVelocity.y;
-                        ember.position.z += emberVelocity.z;
-                        
-                        // Embers slowly lose upward momentum
-                        emberVelocity.y = Math.max(0, emberVelocity.y - 0.0005);
-                        
-                        // Add some random motion
-                        emberVelocity.x += (Math.random() - 0.5) * 0.002;
-                        emberVelocity.z += (Math.random() - 0.5) * 0.002;
-                        
-                        // Fade out
-                        ember.material.opacity = 0.9 * (1 - emberLife / emberMaxLife);
-                        
-                        // Embers get smaller
-                        ember.scale.multiplyScalar(0.98);
-                        
-                        requestAnimationFrame(animateEmber);
-                    } else {
-                        this.scene.remove(ember);
-                    }
-                };
-                
-                animateEmber();
+                // Increase the active count if needed
+                if (this.activeParticleCount < this.maxParticles) {
+                    this.activeParticleCount++;
+                }
             }
+            
+            // Mark attributes as needing update
+            this.geometry.attributes.position.needsUpdate = true;
+            this.geometry.attributes.color.needsUpdate = true;
+            this.geometry.attributes.size.needsUpdate = true;
+            
         } catch (error) {
             console.error('Error adding fire particles:', error);
         }
@@ -312,7 +354,9 @@ class TrailSystem {
     
     update() {
         try {
-            // For each trail segment, update position and fade out over time
+            let needsUpdate = false;
+            
+            // For each trail, update position and fade out over time
             for (let i = this.trails.length - 1; i >= 0; i--) {
                 const trail = this.trails[i];
                 
@@ -327,7 +371,6 @@ class TrailSystem {
                 
                 // Move trail backward with game speed
                 if (trail.position) {
-                    // MODIFIED: Smoother movement for trailing effects
                     trail.position.z += this.trailSpeed;
                     
                     // Update light position to match
@@ -342,6 +385,72 @@ class TrailSystem {
                     this.trails.splice(i, 1);
                 }
             }
+            
+            // Update all active particles
+            for (let i = 0; i < this.particles.length; i++) {
+                const particle = this.particles[i];
+                
+                if (particle.active) {
+                    // Update lifetime
+                    particle.lifetime++;
+                    
+                    // Update position based on velocity
+                    particle.position.x += particle.velocity.x;
+                    particle.position.y += particle.velocity.y;
+                    particle.position.z += particle.velocity.z + this.trailSpeed; // Also move with game speed
+                    
+                    // Slow down over time but keep rising (for fire effect)
+                    particle.velocity.x *= 0.97;
+                    particle.velocity.y = Math.max(0.001, particle.velocity.y * 0.98);
+                    particle.velocity.z *= 0.97;
+                    
+                    // Fade out and get smaller
+                    const lifeRatio = particle.lifetime / particle.maxLifetime;
+                    particle.size *= 0.99; // Slowly shrink
+                    
+                    // Update color - fire gets yellower/brighter then fades
+                    if (lifeRatio < 0.3) {
+                        // Brighten from orange to yellow (early life)
+                        const hsl = { h: 0, s: 0, l: 0 };
+                        particle.color.getHSL(hsl);
+                        
+                        particle.color.setHSL(
+                            Math.min(0.15, hsl.h + 0.001),
+                            Math.max(0.5, hsl.s - 0.01),
+                            Math.min(0.8, hsl.l + 0.02)
+                        );
+                    } else {
+                        // Fade to darker orange-red (later life)
+                        const fadeRatio = 1 - (lifeRatio - 0.3) / 0.7; // Normalized from 0.3-1.0 lifespan
+                        const hsl = { h: 0, s: 0, l: 0 };
+                        particle.color.getHSL(hsl);
+                        
+                        // Reduce brightness for fade out effect
+                        particle.color.setHSL(
+                            hsl.h,
+                            hsl.s,
+                            hsl.l * fadeRatio
+                        );
+                    }
+                    
+                    // Update buffer arrays
+                    this.updateParticleBuffers(particle);
+                    needsUpdate = true;
+                    
+                    // Deactivate if too old or too far back
+                    if (particle.lifetime >= particle.maxLifetime || particle.position.z > 5) {
+                        particle.active = false;
+                    }
+                }
+            }
+            
+            // Update buffer attributes if needed
+            if (needsUpdate) {
+                this.geometry.attributes.position.needsUpdate = true;
+                this.geometry.attributes.color.needsUpdate = true;
+                this.geometry.attributes.size.needsUpdate = true;
+            }
+            
         } catch (error) {
             console.error('Error updating trails:', error);
         }
@@ -349,19 +458,8 @@ class TrailSystem {
     
     // Get trail positions for collision detection
     getTrails() {
-        try {
-            // Don't return trails for collision detection since they shouldn't be considered as objects
-            return [];
-            
-            // Original code (now commented out):
-            // return this.trails.map(trail => ({
-            //     position: trail.mesh.position,
-            //     size: trail.size
-            // }));
-        } catch (error) {
-            console.error('Error getting trails:', error);
-            return [];
-        }
+        // Don't return trails for collision detection
+        return [];
     }
     
     increaseSpeed(amount) {
@@ -388,36 +486,27 @@ class TrailSystem {
             // Reset last color
             this.lastColorIndex = -1;
             
-            // IMPROVED: Find and remove any remaining fire particles with better type checking
-            const objectsToRemove = [];
-            this.scene.traverse(object => {
-                // Find small spheres that match our particle characteristics
-                if (object.geometry && 
-                    object.geometry.type === 'SphereGeometry' && 
-                    object.geometry.parameters.radius < 0.2 &&
-                    object.material) {
-                    
-                    // Check for transparent materials (our particles use transparency)
-                    if (object.material.transparent === true) {
-                        objectsToRemove.push(object);
-                    }
-                    
-                    // If it has an emissive property and it's not a supported material type,
-                    // this could be causing our errors, so remove it
-                    if (object.material.emissive && 
-                        object.material.type === 'MeshBasicMaterial') {
-                        console.warn('Found MeshBasicMaterial with invalid emissive property - removing');
-                        objectsToRemove.push(object);
-                    }
-                }
-            });
-            
-            // Remove all identified particles
-            for (const object of objectsToRemove) {
-                this.scene.remove(object);
+            // Reset all particles to inactive
+            for (let i = 0; i < this.particles.length; i++) {
+                this.particles[i].active = false;
             }
             
-            console.log('Trail system reset, removed all trails and particles');
+            // Update the buffers to clear all particles
+            for (let i = 0; i < this.maxParticles; i++) {
+                // Move particles far away
+                this.positions[i * 3] = 0;
+                this.positions[i * 3 + 1] = 0;
+                this.positions[i * 3 + 2] = 1000; // Move far away (invisible)
+                
+                // Set size to 0
+                this.sizes[i] = 0;
+            }
+            
+            // Mark buffers for update
+            this.geometry.attributes.position.needsUpdate = true;
+            this.geometry.attributes.size.needsUpdate = true;
+            
+            console.log('Trail system reset, all particles cleared');
         } catch (error) {
             console.error('Error resetting trails:', error);
         }
