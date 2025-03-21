@@ -13,7 +13,7 @@ class TrailSystem {
         this.continuousTrail = false;
         this.trailInterval = null;
         this.lastTrailTime = 0;
-        this.trailDelay = 100; // Slightly faster trail generation for smoother effect
+        this.trailDelay = 150; // Increased delay from 100ms to 150ms for fewer particles
         
         // Create a fire-like color palette
         this.colorPalette = [
@@ -41,7 +41,7 @@ class TrailSystem {
     
     initParticleSystem() {
         // Max number of particles active at any time
-        this.maxParticles = 100;
+        this.maxParticles = 60; // Reduced from 100 to 60
         
         // Arrays to hold particle data
         this.positions = new Float32Array(this.maxParticles * 3);
@@ -156,28 +156,32 @@ class TrailSystem {
         this.playerTrailsOnly = playerOnly;
     }
     
-    createTrail(position, objectType = 'player') {
-        // If trails are disabled or we only want player trails and this isn't a player, return null
-        if (!this.trailsEnabled || (this.playerTrailsOnly && objectType !== 'player')) {
-            return null;
-        }
-        
-        try {
+    createTrail(position, objectType = 'player', customColor = null, particleCount = 3) {
+        try {            
+            // Only create trails if the feature is enabled
+            if (!this.trailsEnabled) return null;
+            
+            // For obstacle trails, only create them if we're showing all trails
+            if (objectType !== 'player' && this.playerTrailsOnly) return null;
+            
+            // Calculate trail color
+            let trailColor;
+            if (customColor) {
+                trailColor = customColor;
+            } else {
+                // Use random color from palette
+                let colorIndex;
+                do {
+                    colorIndex = Math.floor(Math.random() * this.colorPalette.length);
+                } while (colorIndex === this.lastColorIndex);
+                
+                this.lastColorIndex = colorIndex;
+                const colorInfo = this.colorPalette[colorIndex];
+                trailColor = new THREE.Color().setHSL(colorInfo.h, colorInfo.s, colorInfo.l);
+            }
+            
             // Store the last trail time for continuous trail effect
             this.lastTrailTime = Date.now();
-            
-            // Pick a color from the palette (avoid repeating the last color)
-            let colorIndex;
-            do {
-                colorIndex = Math.floor(Math.random() * this.colorPalette.length);
-            } while (colorIndex === this.lastColorIndex && this.colorPalette.length > 1);
-            
-            this.lastColorIndex = colorIndex;
-            const colorChoice = this.colorPalette[colorIndex];
-            
-            // Use a new color object and set its HSL
-            const trailColor = new THREE.Color();
-            trailColor.setHSL(colorChoice.h, colorChoice.s, colorChoice.l);
             
             // Create a fixed position directly behind the player
             const trailPos = new THREE.Vector3().copy(position);
@@ -203,7 +207,7 @@ class TrailSystem {
             });
             
             // Create fire particles for this trail
-            this.createFireParticles(trailPosition, trailColor, 8);
+            this.createFireParticles(trailPosition, trailColor, particleCount);
             
             // If we have too many trails, remove the oldest ones
             if (this.trails.length > this.maxTrails) {
@@ -219,7 +223,7 @@ class TrailSystem {
     }
     
     // Create fire particles using the particle system
-    createFireParticles(position, baseColor, count = 8) {
+    createFireParticles(position, baseColor, count = 5) {
         try {
             // Create regular fire particles
             for (let i = 0; i < count; i++) {
@@ -251,9 +255,9 @@ class TrailSystem {
                 );
                 
                 particle.color.copy(color);
-                particle.size = 0.15 + Math.random() * 0.2;
+                particle.size = 0.12 + Math.random() * 0.15; // Slightly reduced from 0.15-0.35 to 0.12-0.27
                 particle.lifetime = 0;
-                particle.maxLifetime = 30 + Math.floor(Math.random() * 20);
+                particle.maxLifetime = 25 + Math.floor(Math.random() * 15); // Reduced lifetime from 30-50 to 25-40
                 
                 // Update the buffer arrays
                 this.updateParticleBuffers(particle);
@@ -265,7 +269,7 @@ class TrailSystem {
             }
             
             // Create a few ember particles
-            for (let i = 0; i < 2; i++) {
+            for (let i = 0; i < 1; i++) { // Reduced from 2 to 1
                 const particle = this.getNextParticle();
                 
                 // Embers are brighter and smaller
@@ -329,19 +333,23 @@ class TrailSystem {
                     z: player.position.z
                 };
                 
-                // Create a smaller trail when moving horizontally vs jumping
-                const trail = this.createTrail(trailPosition, 'player');
+                // Get random color from the palette for more variation
+                let colorIndex;
+                do {
+                    colorIndex = Math.floor(Math.random() * this.colorPalette.length);
+                } while (colorIndex === this.lastColorIndex);
                 
-                // Make trail size dependent on movement type
-                if (trail && !player.isJumping && Math.abs(player.velocity.x) > 0.05) {
-                    // Scale down horizontal movement trails
-                    trail.scale.set(0.7, 0.7, 0.7);
-                    
-                    // Tilt trail in direction of movement for better visual effect
-                    trail.rotation.z += Math.sign(player.velocity.x) * 0.3;
-                }
+                this.lastColorIndex = colorIndex;
+                const colorInfo = this.colorPalette[colorIndex];
+                const trailColor = new THREE.Color().setHSL(colorInfo.h, colorInfo.s, colorInfo.l);
+                
+                // Create trail with 'player' type
+                this.createTrail(trailPosition, 'player', trailColor, 3); // Reduced particle count parameter from default (5) to 3
+                
+                // Update last creation time
+                this.lastTrailTime = Date.now();
             }
-        }, this.trailDelay);
+        }, 40); // Increased from default (likely 30ms) to 40ms
     }
     
     stopContinuousTrail() {

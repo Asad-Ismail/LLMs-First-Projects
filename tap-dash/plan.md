@@ -46,4 +46,18 @@ Impact: Reduces draw calls from hundreds to one per frame, boosting performance 
 
 
 
+4. Rendering settings in game.js can be adjusted for better performance, especially on mobile.
+
+Cap Pixel Ratio:
+this.renderer.setPixelRatio(window.devicePixelRatio) uses the device’s full resolution, which can be taxing on high-DPI mobile screens.
+Optimization: Cap it with this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)).
+Impact: Reduces rendering resolution on high-DPI devices, improving performance with minimal visual impact.
+Disable Antialiasing (Optional):
+antialias: true in the renderer setup enhances visuals but is costly.
+Optimization: Set antialias: false on low-end devices (detect via browser capabilities or user settings).
+Impact: Trades visual smoothness for performance; test to ensure acceptability.
+Disable Shadows:
+this.renderer.shadowMap.enabled = true is set, but no lights have castShadow = true. This setting is unnecessary unless shadows are added later.
+Optimization: Set this.renderer.shadowMap.enabled = false.
+Impact: Avoids potential shadow-related overhead, though currently mini
 

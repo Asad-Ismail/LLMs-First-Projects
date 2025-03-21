@@ -71,7 +71,7 @@ class Player {
                 // Show fire trail when moving or jumping and not frozen
                 if ((this.isJumping || Math.abs(this.velocity.x) > 0.05) && !this.frozen) {
                     // Create multiple particles for fire effect
-                    for (let i = 0; i < 2; i++) { // Reduced from 3 to 2 particles per interval for performance
+                    for (let i = 0; i < 1; i++) { // Reduced from 2 to 1 particle per interval for performance
                         // Generate fire-colored particles (yellows, oranges, reds)
                         const fireHue = 0.05 + Math.random() * 0.1; // Range from orange-red to yellow
                         const fireSaturation = 0.7 + Math.random() * 0.3;
@@ -79,11 +79,11 @@ class Player {
                         
                         // Create a particle
                         const particle = new THREE.Mesh(
-                            new THREE.SphereGeometry(0.06 + Math.random() * 0.05, 8, 8), // Increased from 0.04-0.08 to 0.06-0.11
+                            new THREE.SphereGeometry(0.06 + Math.random() * 0.05, 6, 6), // Reduced geometry segments from 8,8 to 6,6
                             new THREE.MeshBasicMaterial({
                                 color: new THREE.Color().setHSL(fireHue, fireSaturation, fireBrightness),
                                 transparent: true,
-                                opacity: 0.8 + Math.random() * 0.2 // Increased from 0.7-1.0 to 0.8-1.0
+                                opacity: 0.7 + Math.random() * 0.2 // Reduced opacity slightly
                             })
                         );
                         
@@ -140,13 +140,13 @@ class Player {
                     }
                     
                     // Occasionally add a spark/ember particle
-                    if (Math.random() > 0.85) { // Reduced frequency from >0.7 to >0.85 (30% to 15% chance)
+                    if (Math.random() > 0.92) { // Reduced frequency from >0.85 to >0.92 (15% to 8% chance)
                         const ember = new THREE.Mesh(
-                            new THREE.SphereGeometry(0.03 + Math.random() * 0.025, 6, 6), // Increased from 0.02-0.04 to 0.03-0.055
+                            new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 4, 4), // Reduced geometry segments and size
                             new THREE.MeshBasicMaterial({
                                 color: new THREE.Color().setHSL(0.1, 0.9, 0.8), // Bright orange-yellow
                                 transparent: true,
-                                opacity: 0.95 // Increased from 0.9 to 0.95
+                                opacity: 0.9 // Reduced opacity slightly
                             })
                         );
                         
@@ -185,7 +185,7 @@ class Player {
                         animateEmber();
                     }
                 }
-            }, 30); // Create particles more frequently for smooth effect
+            }, 40); // Reduced interval frequency from 30ms to 40ms
         } catch (error) {
             console.error("Error creating fire particle trail:", error);
         }
