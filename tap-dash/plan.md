@@ -37,5 +37,12 @@ tap-dash/
 
 
 
-Add fewer particles to the trail, reducing the particle count per trail from 25 to 2-4, adjusting size or opacity to compensate visually.
+1- Add fewer particles to the trail, reducing the particle count per trail from 25 to 2-4, adjusting size or opacity to compensate visually.
 Impact: Fewer objects to render, easing GPU load with minimal visual compromise.
+
+2- lets reduce number fo trails to 2 instead of 20 something like that 
+3- 
+
+
+
+

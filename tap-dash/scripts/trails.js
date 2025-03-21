@@ -6,7 +6,7 @@ class TrailSystem {
         this.scene = scene;
         this.trails = [];
         this.trailSpeed = 0.1; // Same as obstacle speed
-        this.maxTrails = 20; // Reduced back to avoid overwhelming graphics
+        this.maxTrails = 2; // Reduced from 20 to 2 to improve performance
         
         // ADDED: Create a continuous trail effect
         this.continuousTrail = false;
@@ -95,7 +95,7 @@ class TrailSystem {
             });
             
             // MODIFIED: Create a dense burst of fire particles
-            this.addFireParticles(trailPosition, trailColor, 3); // Reduced from 25 to 3 particles for performance
+            this.addFireParticles(trailPosition, trailColor, 1); // Reduced from 3 to 1 particles for performance
             
             // If we have too many trails, remove the oldest ones
             if (this.trails.length > this.maxTrails) {
@@ -111,7 +111,7 @@ class TrailSystem {
     }
     
     // MODIFIED: Create fire particles instead of regular particles
-    addFireParticles(position, baseColor, count = 3) { // Default reduced from 25 to 3 for performance
+    addFireParticles(position, baseColor, count = 1) { // Default reduced from 3 to 1 for performance
         try {
             // Create a burst of fire-like particles
             for (let i = 0; i < count; i++) {
