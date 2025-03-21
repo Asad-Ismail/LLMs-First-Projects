@@ -34,3 +34,8 @@ tap-dash/
 └── assets/
     ├── sounds/        # Game sounds (jump, collect, etc.)
     └── images/        # Any necessary images
+
+
+
+Add fewer particles to the trail, reducing the particle count per trail from 25 to 2-4, adjusting size or opacity to compensate visually.
+Impact: Fewer objects to render, easing GPU load with minimal visual compromise.

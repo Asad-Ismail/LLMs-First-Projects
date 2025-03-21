@@ -71,7 +71,7 @@ class Player {
                 // Show fire trail when moving or jumping and not frozen
                 if ((this.isJumping || Math.abs(this.velocity.x) > 0.05) && !this.frozen) {
                     // Create multiple particles for fire effect
-                    for (let i = 0; i < 3; i++) { // Create 3 particles per interval for richer effect
+                    for (let i = 0; i < 2; i++) { // Reduced from 3 to 2 particles per interval for performance
                         // Generate fire-colored particles (yellows, oranges, reds)
                         const fireHue = 0.05 + Math.random() * 0.1; // Range from orange-red to yellow
                         const fireSaturation = 0.7 + Math.random() * 0.3;
@@ -79,11 +79,11 @@ class Player {
                         
                         // Create a particle
                         const particle = new THREE.Mesh(
-                            new THREE.SphereGeometry(0.04 + Math.random() * 0.04, 8, 8),
+                            new THREE.SphereGeometry(0.06 + Math.random() * 0.05, 8, 8), // Increased from 0.04-0.08 to 0.06-0.11
                             new THREE.MeshBasicMaterial({
                                 color: new THREE.Color().setHSL(fireHue, fireSaturation, fireBrightness),
                                 transparent: true,
-                                opacity: 0.7 + Math.random() * 0.3
+                                opacity: 0.8 + Math.random() * 0.2 // Increased from 0.7-1.0 to 0.8-1.0
                             })
                         );
                         
@@ -140,13 +140,13 @@ class Player {
                     }
                     
                     // Occasionally add a spark/ember particle
-                    if (Math.random() > 0.7) {
+                    if (Math.random() > 0.85) { // Reduced frequency from >0.7 to >0.85 (30% to 15% chance)
                         const ember = new THREE.Mesh(
-                            new THREE.SphereGeometry(0.02 + Math.random() * 0.02, 6, 6),
+                            new THREE.SphereGeometry(0.03 + Math.random() * 0.025, 6, 6), // Increased from 0.02-0.04 to 0.03-0.055
                             new THREE.MeshBasicMaterial({
                                 color: new THREE.Color().setHSL(0.1, 0.9, 0.8), // Bright orange-yellow
                                 transparent: true,
-                                opacity: 0.9
+                                opacity: 0.95 // Increased from 0.9 to 0.95
                             })
                         );
                         
@@ -281,17 +281,17 @@ class Player {
     addParticleTrail() {
         try {
             // Create a simple particle system for a continuous trail
-            const particleCount = 20;
+            const particleCount = 4; // Reduced from 20 to 4 for performance
             const particles = [];
             
             for (let i = 0; i < particleCount; i++) {
-                const size = Math.random() * 0.08 + 0.02;
+                const size = Math.random() * 0.12 + 0.04; // Increased from 0.02-0.10 to 0.04-0.16
                 const particle = new THREE.Mesh(
                     new THREE.SphereGeometry(size, 8, 8),
                     new THREE.MeshBasicMaterial({
                         color: 0x88aaff,
                         transparent: true,
-                        opacity: 0.6
+                        opacity: 0.75 // Increased from 0.6 to 0.75
                     })
                 );
                 
@@ -319,12 +319,12 @@ class Player {
                     if (particle.age > particle.lifetime) {
                         particle.position.copy(this.mesh.position);
                         particle.position.y -= 0.2;
-                        particle.material.opacity = 0.6;
+                        particle.material.opacity = 0.75;
                         particle.age = 0;
                     }
                     
                     // Fade out
-                    particle.material.opacity = 0.6 * (1 - particle.age / particle.lifetime);
+                    particle.material.opacity = 0.75 * (1 - particle.age / particle.lifetime);
                     
                     // Slow down as it ages
                     particle.position.z += 0.02 * (1 - particle.age / particle.lifetime);

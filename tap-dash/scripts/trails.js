@@ -95,7 +95,7 @@ class TrailSystem {
             });
             
             // MODIFIED: Create a dense burst of fire particles
-            this.addFireParticles(trailPosition, trailColor, 25); // Increased particle count
+            this.addFireParticles(trailPosition, trailColor, 3); // Reduced from 25 to 3 particles for performance
             
             // If we have too many trails, remove the oldest ones
             if (this.trails.length > this.maxTrails) {
@@ -111,7 +111,7 @@ class TrailSystem {
     }
     
     // MODIFIED: Create fire particles instead of regular particles
-    addFireParticles(position, baseColor, count = 25) {
+    addFireParticles(position, baseColor, count = 3) { // Default reduced from 25 to 3 for performance
         try {
             // Create a burst of fire-like particles
             for (let i = 0; i < count; i++) {
@@ -127,14 +127,14 @@ class TrailSystem {
                     0.4 + Math.random() * 0.6  // Variable brightness
                 );
                 
-                // Create various sized particles
-                const size = 0.05 + Math.random() * 0.15; // Larger particles for more visible fire
+                // Create various sized particles - INCREASED SIZE to compensate for fewer particles
+                const size = 0.12 + Math.random() * 0.18; // Increased from 0.05-0.20 to 0.12-0.30
                 const particle = new THREE.Mesh(
                     new THREE.SphereGeometry(size, 8, 8),
                     new THREE.MeshBasicMaterial({
                         color: color,
                         transparent: true,
-                        opacity: 0.7 + Math.random() * 0.3
+                        opacity: 0.8 + Math.random() * 0.2 // Increased from 0.7-1.0 to 0.8-1.0
                         // Remove emissive from MeshBasicMaterial as it's not supported
                     })
                 );
@@ -204,13 +204,13 @@ class TrailSystem {
             }
             
             // Add a few ember particles that shoot up more dramatically
-            for (let i = 0; i < 3; i++) {
+            for (let i = 0; i < 1; i++) { // Reduced from 3 to 1 ember for performance
                 const ember = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 6, 6),
+                    new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 6, 6), // Increased from 0.03-0.05 to 0.05-0.09
                     new THREE.MeshBasicMaterial({
                         color: new THREE.Color().setHSL(0.1, 0.9, 0.8), // Bright yellow-orange
                         transparent: true,
-                        opacity: 0.9
+                        opacity: 0.95 // Increased from 0.9 to 0.95
                     })
                 );
                 
