@@ -973,6 +973,9 @@ class Game {
                     this.addScreenShake(0.3);
             }
             
+            // Add death notification showing what you collided with
+            this.showDeathNotification(obstacle.type);
+            
             // Show brief slow-motion effect before game over
             this.showSlowMotionEffect(() => {
                 this.gameOver();
@@ -981,6 +984,74 @@ class Game {
             console.error('Error handling collision:', error);
             // Fallback to direct game over
             this.gameOver();
+        }
+    }
+    
+    // ADDED: Display death notification showing what you collided with
+    showDeathNotification(obstacleType) {
+        try {
+            // Format the obstacle type for display
+            const formattedType = obstacleType.charAt(0).toUpperCase() + obstacleType.slice(1);
+            
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = 'death-notification';
+            notification.innerHTML = `COLLIDED WITH<br><span class="obstacle-type">${formattedType}</span>`;
+            
+            // Style the notification - SIMPLIFIED STYLING
+            notification.style.position = 'absolute';
+            notification.style.top = '40%';
+            notification.style.left = '50%';
+            notification.style.transform = 'translate(-50%, -50%)';
+            notification.style.color = '#ff0000';
+            notification.style.fontFamily = '"Arial", sans-serif';
+            notification.style.fontSize = '48px';
+            notification.style.fontWeight = 'bold';
+            notification.style.textAlign = 'center';
+            notification.style.textShadow = '0 0 10px rgba(255, 0, 0, 0.5)';
+            notification.style.zIndex = '1000';
+            notification.style.pointerEvents = 'none';
+            notification.style.opacity = '0';
+            notification.style.transition = 'opacity 0.3s ease-in-out';
+            notification.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            notification.style.padding = '20px 40px';
+            notification.style.borderRadius = '10px';
+            
+            // Style the obstacle type - SIMPLIFIED
+            const obstacleTypeStyle = `
+                font-size: 72px;
+                color: #ff3333;
+                text-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+                display: block;
+                margin-top: 10px;
+            `;
+            
+            // Apply the style to the obstacle type span
+            notification.querySelector('.obstacle-type').style.cssText = obstacleTypeStyle;
+            
+            // Add to UI layer
+            const uiLayer = document.getElementById('ui-layer');
+            if (uiLayer) {
+                uiLayer.appendChild(notification);
+                
+                // Simple fade in animation
+                setTimeout(() => {
+                    notification.style.opacity = '1';
+                }, 50);
+                
+                // Remove after delay (slightly before game over screen shows)
+                setTimeout(() => {
+                    notification.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            uiLayer.removeChild(notification);
+                        }
+                    }, 300);
+                }, 2000);
+            }
+        } catch (error) {
+            console.error('Error showing death notification:', error);
         }
     }
     
