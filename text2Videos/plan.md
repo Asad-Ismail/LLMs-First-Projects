@@ -65,3 +65,20 @@ input = {
 ## Adding voice to videos
 
 Maybe use something like [Orpheus TTS](https://github.com/canopyai/Orpheus-TTS) to generate voice for videos probably need to finetune the model as it is mostly adults voices maybe need to finetune on cartoon or children voices.
+
+# Popular Platforms
+
+- **[Zapsplat](https://www.zapsplat.com/tags/dragon/)**  
+  Widely used for its extensive library of over 30,000 free sound effects, including cartoon-specific categories. Note: Free downloads may require attribution. *(Zapsplat)*
+
+- **[Pixabay](https://pixabay.com/sound-effects/search/cartoon/)**  
+  Favored for its no-attribution, royalty-free cartoon sound effects and music, perfect for quick and legal use. *(Pixabay Cartoon Sounds)*
+
+- **[Mixkit](https://mixkit.co/free-sound-effects/cartoon/)**  
+  Offers 36 free cartoon sound effects, all royalty-free and ready for use, with no attribution needed. *(Mixkit Cartoon Sounds)*
+
+- **[Uppbeat](https://uppbeat.io/sfx/category/cartoon)**  
+  Provides a "Cartoon" collection of free sound effects, safe for platforms like YouTube and TikTok, with no attribution required. *(Uppbeat Cartoon Sounds)*
+
+- **[Storyblocks](https://www.storyblocks.com/audio)**  
+  Offers an unlimited library of royalty-free audio, including animation-specific sounds. Note: A subscription may be required for full access. *(Storyblocks Animation Audio)*
