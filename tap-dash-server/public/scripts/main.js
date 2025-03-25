@@ -45,6 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Load and display high score
             loadHighScore();
             
+            // Ensure high score display is updated with player name
+            if (window.game.updateHighScoreDisplay) {
+                window.game.updateHighScoreDisplay();
+            }
+            
             // Add fallback button handlers
             addFallbackHandlers();
             
@@ -141,6 +146,24 @@ function addFallbackHandlers() {
         };
     }
     
+    // Restart button fallback
+    const restartButton = document.getElementById('restart-button');
+    if (restartButton) {
+        restartButton.onclick = function(e) {
+            console.log('Restart button clicked (fallback handler)');
+            e.stopPropagation();
+            
+            if (window.game) {
+                console.log('Restarting game via direct click');
+                window.game.restartGame();
+            } else {
+                console.error('Game instance not available for restart');
+                location.reload(); // Fallback to page reload
+            }
+            return false;
+        };
+    }
+    
     // Direct click handler on the entire document as last resort
     document.addEventListener('click', function(e) {
         if (!window.game) return;
@@ -159,9 +182,24 @@ function addFallbackHandlers() {
     document.addEventListener('keydown', function(e) {
         if (e.code === 'Space' && window.game) {
             console.log('Space key pressed (fallback handler)');
+            
+            // Check if game over screen is visible
+            const gameOverScreen = document.getElementById('game-over');
+            if (gameOverScreen && gameOverScreen.style.display !== 'none' && !gameOverScreen.classList.contains('hidden')) {
+                console.log('Game over screen is visible, restarting game');
+                // Explicitly hide game over screen
+                gameOverScreen.style.display = 'none';
+                gameOverScreen.classList.add('hidden');
+                
+                // Restart the game
+                window.game.restartGame();
+                return;
+            }
+            
+            // Normal game flow
             if (!window.game.isRunning) {
                 window.game.startGame();
-            } else if (window.game.gameStarted) { // ADDED: Check gameStarted flag
+            } else if (window.game.gameStarted) {
                 window.game.handleTap();
             }
         }
@@ -178,14 +216,22 @@ function addFallbackHandlers() {
     });
 }
 
-// Handle window focus/blur for better game experience
+// Handle window focus/blur via the game class directly
+// The game itself will handle browser switching internally
+// For older browsers/compatibility, these handlers remain as a fallback
 window.addEventListener('blur', () => {
-    if (window.game && window.game.isRunning && window.game.handleBlur) {
+    if (!window.game || !window.game.windowFocused) return;
+    console.log('Window blur fallback handler');
+    
+    if (window.game && window.game.handleBlur) {
         window.game.handleBlur();
     }
 });
 
 window.addEventListener('focus', () => {
+    if (!window.game) return;
+    console.log('Window focus fallback handler');
+    
     if (window.game && window.game.handleFocus) {
         window.game.handleFocus();
     }

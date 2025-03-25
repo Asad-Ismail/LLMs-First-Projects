@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tap Dodge</title>
     <link rel="stylesheet" href="styles/main.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
     
     <!-- Improved Three.js loading -->
     <script>
@@ -159,6 +160,7 @@
                 "scripts/player.js", 
                 "scripts/obstacles.js", 
                 "scripts/trails.js", 
+                "scripts/multiplayer.js",
                 "scripts/game.js", 
                 "scripts/main.js"
             ];
@@ -273,8 +275,13 @@
             <div id="fps-counter">FPS: 0</div>
             <div id="controls-hint">Tap or Press Space to Jump!</div>
             
-            <!-- Updated start screen with beautiful effects -->
+            <!-- Updated start screen with integrated username form -->
             <div id="start-screen" class="overlay">
+                <div id="players-list">
+                    <h2>Joined Players</h2>
+                    <ul id="players-ul"></ul>
+                </div>
+                
                 <div class="stars-container">
                     <div class="stars"></div>
                     <div class="stars"></div>
@@ -288,7 +295,12 @@
                 
                 <div class="tagline">Tap • Jump • Dodge</div>
                 
-                <button id="start-button" class="pulse-button">
+                <!-- Username input section -->
+                <div id="username-section">
+                    <input type="text" id="username-input" maxlength="20" placeholder="Enter Your Username">
+                </div>
+                
+                <button id="start-button" class="pulse-button disabled">
                     <span class="button-text">PLAY</span>
                     <span class="button-shine"></span>
                 </button>
@@ -296,11 +308,11 @@
                 <div class="sparkles"></div>
             </div>
             
-            <div id="game-over" class="overlay hidden">
+            <div id="game-over" class="overlay hidden" onclick="if(window.game && event.target === this) window.game.restartGame();">
                 <h2>Game Over</h2>
                 <p>Your score: <span id="final-score">0</span></p>
                 <p id="high-score-message" class="hidden">New High Score!</p>
-                <button id="restart-button">Play Again</button>
+                <button id="restart-button" onclick="window.game.restartGame()">Play Again</button>
             </div>
         </div>
     </div>

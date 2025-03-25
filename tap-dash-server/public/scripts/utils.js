@@ -176,21 +176,36 @@ function createExplosion(scene, position, color = 0xff5555, particleCount = 30) 
 // High score management functions
 function loadHighScore() {
     const highScore = localStorage.getItem('tapDashHighScore') || 0;
+    const playerName = localStorage.getItem('tapDashPlayerName') || '';
+    
     const highScoreElement = document.getElementById('high-score');
     if (highScoreElement) {
-        highScoreElement.textContent = `Best: ${highScore}`;
+        if (playerName) {
+            highScoreElement.textContent = `Best: ${Math.floor(highScore)} (${playerName})`;
+        } else {
+            highScoreElement.textContent = `Best: ${Math.floor(highScore)}`;
+        }
     }
     return parseInt(highScore);
 }
 
-function saveHighScore(score) {
+function saveHighScore(score, playerName) {
     const currentHighScore = loadHighScore();
     if (score > currentHighScore) {
         localStorage.setItem('tapDashHighScore', score);
         
+        // Save player name if provided
+        if (playerName) {
+            localStorage.setItem('tapDashPlayerName', playerName);
+        }
+        
         const highScoreElement = document.getElementById('high-score');
         if (highScoreElement) {
-            highScoreElement.textContent = `Best: ${score}`;
+            if (playerName) {
+                highScoreElement.textContent = `Best: ${Math.floor(score)} (${playerName})`;
+            } else {
+                highScoreElement.textContent = `Best: ${Math.floor(score)}`;
+            }
         }
         
         const highScoreMessage = document.getElementById('high-score-message');

@@ -21,6 +21,13 @@ class Game {
         this.isRunning = false;
         this.score = 0;
         this.gameStarted = false; // Flag to track if gameplay has actually started after countdown
+        this.userJoined = false; // Flag to track if user has joined with a username
+        
+        // Add window focus tracking - essential for handling browser switching
+        this.windowFocused = true;
+        this.lastCollisionCheck = 0;
+        this.collisionDetected = false;
+        this.recoveryCheckScheduled = false;
         
         // FPS counter variables - properly initialized
         this.frames = 0;
@@ -37,6 +44,9 @@ class Game {
         this.assetsLoaded = false;
         this.initialLoadComplete = false;
         
+        // Initialize multiplayer
+        this.multiplayer = null;
+        
         try {
             // Set up base Three.js scene
             const sceneStart = performance.now();
@@ -49,6 +59,9 @@ class Game {
                 this.loadGameAssets();
             }, 100);
             
+            // Initialize multiplayer manager after scene is set up
+            this.multiplayer = new MultiplayerManager(this);
+            
             // Start animation loop immediately for responsive UI
             this.animate();
             
@@ -59,10 +72,80 @@ class Game {
             console.log('Game initialization performance:', this.performanceLog);
             
             console.log('Game initialization complete');
+            
+            // Register window focus/blur handlers directly in the game class
+            this.setupWindowFocusHandlers();
+            
         } catch (error) {
             console.error('Error during game initialization:', error);
             alert('There was a problem initializing the game. Please refresh the page.');
         }
+    }
+    
+    // Add a new method to handle window focus events
+    setupWindowFocusHandlers() {
+        window.addEventListener('blur', () => {
+            console.log('Game detected window blur');
+            this.windowFocused = false;
+            
+            // Record game state when losing focus
+            this.wasPreviouslyRunning = this.isRunning;
+        });
+        
+        window.addEventListener('focus', () => {
+            console.log('Game detected window focus');
+            const wasPreviouslyUnfocused = this.windowFocused === false;
+            this.windowFocused = true;
+            
+            // Only run state recovery if we're transitioning from unfocused to focused
+            if (wasPreviouslyUnfocused && !this.recoveryCheckScheduled) {
+                this.recoveryCheckScheduled = true;
+                
+                // Check for inconsistent state after a short delay
+                setTimeout(() => {
+                    this.recoveryCheckScheduled = false;
+                    this.performStateRecovery();
+                }, 300);
+            }
+        });
+    }
+    
+    // Add a method to detect and recover from inconsistent game states
+    performStateRecovery() {
+        console.log('Performing state recovery check');
+        
+        // Case 1: Game was running but is now stopped without game over screen
+        if (this.wasPreviouslyRunning && !this.isRunning) {
+            const gameOverScreen = document.getElementById('game-over');
+            const isGameOverVisible = gameOverScreen && 
+                (gameOverScreen.style.display === 'flex' || 
+                !gameOverScreen.classList.contains('hidden'));
+            
+            if (!isGameOverVisible) {
+                console.log('Detected stuck state: game stopped but no game over screen');
+                // Force game over to recover
+                this.gameOver();
+                return;
+            }
+        }
+        
+        // Case 2: Collision was detected but game over wasn't triggered
+        if (this.collisionDetected && this.isRunning) {
+            console.log('Detected stuck state: collision detected but game still running');
+            this.gameOver();
+            return;
+        }
+        
+        // Case 3: Game is in an unknown/invalid state
+        if (this.player && this.isRunning && this.gameStarted) {
+            if (this.player.position.y < -2) {
+                console.log('Detected stuck state: player fell below ground');
+                this.gameOver();
+                return;
+            }
+        }
+        
+        console.log('State recovery check completed with no issues');
     }
     
     setupScene() {
@@ -521,9 +604,25 @@ class Game {
     }
         
     startGame() {
+        if (this.isRunning) return;
         console.log('Starting game');
         
+        // Ensure username is set before starting
+        if (this.multiplayer && !this.userJoined) {
+            const username = document.getElementById('username-input')?.value.trim();
+            if (username) {
+                this.multiplayer.joinGame(username);
+            } else {
+                console.log('Username not set, waiting for username input');
+                document.getElementById('username-input')?.focus();
+                return;
+            }
+        }
+        
         try {
+            // Update high score display with player name
+            this.updateHighScoreDisplay();
+            
             // Ensure start screen is hidden
             const startScreen = document.getElementById('start-screen');
             if (startScreen) {
@@ -545,6 +644,15 @@ class Game {
             if (this.trailSystem) {
                 this.trailSystem.reset();
                 this.trailSystem.enableTrails(true);  // Enable trails but don't start continuous effect yet
+            }
+            
+            // Send inactive state to server during countdown
+            if (this.multiplayer) {
+                this.multiplayer.updateServer({
+                    position: this.player.position,
+                    score: this.score,
+                    active: false
+                });
             }
             
             // MODIFIED: Add a more visible countdown and instructions
@@ -595,6 +703,15 @@ class Game {
                             this.trailSystem.startContinuousTrail(this.player);
                         }
                         
+                        // Send active state to server once countdown is complete
+                        if (this.multiplayer) {
+                            this.multiplayer.updateServer({
+                                position: this.player.position,
+                                score: this.score,
+                                active: true
+                            });
+                        }
+                        
                         // Play a "go" effect
                         this.playStartEffect();
                     }
@@ -611,6 +728,15 @@ class Game {
                     if (this.trailSystem) {
                         this.trailSystem.startContinuousTrail(this.player);
                     }
+                    
+                    // Send active state to server
+                    if (this.multiplayer) {
+                        this.multiplayer.updateServer({
+                            position: this.player.position,
+                            score: this.score,
+                            active: true
+                        });
+                    }
                 }, 3000);
             }
         } catch (error) {
@@ -624,48 +750,102 @@ class Game {
                 if (this.trailSystem) {
                     this.trailSystem.startContinuousTrail(this.player);
                 }
+                
+                // Send active state to server
+                if (this.multiplayer) {
+                    this.multiplayer.updateServer({
+                        position: this.player.position,
+                        score: this.score,
+                        active: true
+                    });
+                }
             }, 3000);
         }
     }
     
     // MODIFIED: Enhanced game over and restart logic
     gameOver() {
-        console.log('Game over');
-        this.isRunning = false;
-        this.gameStarted = false;
+        if (!this.isRunning) {
+            console.log('Game over called but game is already not running');
+            // Still make sure game over screen is visible
+            this.ensureGameOverScreenVisible();
+            return;
+        }
         
-        try {
-            // ADDED: Stop continuous trail on game over
+        console.log('Game over - stopping game and showing end screen');
+        this.isRunning = false;
+        this.gameStarted = false; // Make sure gameStarted is also reset
+        
+        // Clear collision detection state
+        this.collisionDetected = false;
+        
+        // Stop continuous trail on game over
+        if (this.trailSystem) {
             this.trailSystem.stopContinuousTrail();
-            
-            // Freeze player
-            if (this.player) {
-                this.player.freeze();
-            }
-            
-            // Stop obstacle generation
+        }
+        
+        // Freeze player
+        if (this.player) {
+            this.player.freeze();
+        }
+        
+        // Stop obstacle generation
+        if (this.obstacleManager) {
             this.obstacleManager.stopGeneratingObstacles();
+        }
+        
+        // Ensure game over screen display
+        this.ensureGameOverScreenVisible();
+        
+        // Save high score
+        const playerName = this.multiplayer ? this.multiplayer.username : '';
+        saveHighScore(Math.floor(this.score), playerName);
+        
+        // Update high score display to ensure it shows player name
+        this.updateHighScoreDisplay();
+        
+        // Send inactive state to server
+        if (this.multiplayer) {
+            this.multiplayer.updateServer({
+                position: this.player.position,
+                score: this.score,
+                active: false
+            });
+        }
+    }
+    
+    ensureGameOverScreenVisible() {
+        console.log('Ensuring game over screen is visible');
+        
+        // Display game over screen - ensure it's visible
+        const gameOverScreen = document.getElementById('game-over');
+        if (gameOverScreen) {
+            gameOverScreen.classList.remove('hidden');
+            gameOverScreen.style.display = 'flex';
+            gameOverScreen.style.opacity = '1';
+            gameOverScreen.style.visibility = 'visible';
             
-            // Show final score
+            // Update final score
             const finalScoreElement = document.getElementById('final-score');
             if (finalScoreElement) {
                 finalScoreElement.textContent = Math.floor(this.score);
             }
             
-            // Show game over screen
-            const gameOverElement = document.getElementById('game-over');
-            if (gameOverElement) {
-                gameOverElement.classList.remove('hidden');
-                // ADDED: Also set display style directly for extra reliability
-                gameOverElement.style.display = 'flex';
+            // Make sure restart button is visible and clickable
+            const restartButton = document.getElementById('restart-button');
+            if (restartButton) {
+                restartButton.style.display = 'block';
+                restartButton.style.visibility = 'visible';
+                restartButton.style.opacity = '1';
+                restartButton.style.pointerEvents = 'auto';
+                
+                // Add click handler just to be safe
+                restartButton.onclick = () => this.restartGame();
             } else {
-                console.error('Game over element not found!');
+                console.error('Restart button not found!');
             }
-            
-            // Save high score
-            saveHighScore(Math.floor(this.score));
-        } catch (error) {
-            console.error('Error in game over:', error);
+        } else {
+            console.error('Game over screen not found!');
         }
     }
     
@@ -676,9 +856,12 @@ class Game {
             // MODIFIED: Make sure game over screen is actually hidden
             const gameOverElement = document.getElementById('game-over');
             if (gameOverElement) {
+                console.log('Hiding game over screen');
                 // Force hide by setting display style directly, in case CSS class isn't working
                 gameOverElement.classList.add('hidden');
                 gameOverElement.style.display = 'none';
+                gameOverElement.style.visibility = 'hidden';
+                gameOverElement.style.opacity = '0';
             } else {
                 console.error('Game over element not found!');
             }
@@ -694,12 +877,25 @@ class Game {
             this.obstacleManager.reset();
             this.trailSystem.reset();
             
-            // Reset score
+            // Reset game state
+            this.gameStarted = false;
             this.score = 0;
             updateScoreDisplay(this.score);
             
-            // Start new countdown
-            this.startGame();
+            // Set initial inactive state before starting countdown
+            if (this.multiplayer) {
+                this.multiplayer.updateServer({
+                    position: this.player.position,
+                    score: this.score,
+                    active: false
+                });
+            }
+            
+            // Allow a brief pause before starting new countdown
+            setTimeout(() => {
+                // Start new countdown
+                this.startGame();
+            }, 100);
         } catch (error) {
             console.error('Error restarting game:', error);
         }
@@ -886,6 +1082,7 @@ class Game {
         }
     }
     
+    // MODIFIED: Improved collision detection with safe zone
     checkCollisions() {
         try {
             const obstacles = this.obstacleManager.getObstacles();
@@ -913,6 +1110,14 @@ class Game {
                 
                 // Check for collision
                 if (this.detailedCollisionCheck(this.player.position, obstacle.position, this.player.size, scaledSize)) {
+                    // Mark that a collision was detected (for state recovery)
+                    this.collisionDetected = true;
+                    this.lastCollisionObstacle = obstacle;
+                    this.lastCollisionTime = performance.now();
+                    
+                    // Record collision in console for debugging
+                    console.log('Collision detected with obstacle', obstacle.type, 'at time', this.lastCollisionTime);
+                    
                     // Handle collision
                     this.handleCollision(obstacle);
                     return true;
@@ -929,7 +1134,13 @@ class Game {
     // When collision happens, create visual effect
     handleCollision(obstacle) {
         try {
-            console.log('Collision with', obstacle.type);
+            console.log('Handling collision with', obstacle.type);
+            
+            // Prevent duplicate collision handling (important for browser switching)
+            if (!this.isRunning) {
+                console.log('Game already stopped, ignoring collision');
+                return;
+            }
             
             // Add explosion/impact effect based on obstacle type
             this.obstacleManager.createCollisionEffect(obstacle);
@@ -1564,27 +1775,33 @@ class Game {
     }
     
     animate() {
-        requestAnimationFrame(() => this.animate());
-        
         try {
+            // Request the next frame right away to minimize delays
+            this.animationFrameId = requestAnimationFrame(() => this.animate());
+            
             // Update FPS counter with a more stable calculation
             this.frames++;
             const now = performance.now();
+            const elapsed = now - this.lastFpsUpdate;
             
-            // Update FPS every 500ms for a smoother reading
-            if (now >= this.lastFpsUpdate + 500) {
-                // Calculate FPS with millisecond precision
-                const elapsed = now - this.lastFpsUpdate;
+            if (elapsed >= 1000) {
                 this.currentFps = Math.round((this.frames * 1000) / elapsed);
                 this.lastFpsUpdate = now;
                 this.frames = 0;
                 
-                // Update FPS display with red color as requested
+                // Update FPS display
                 const fpsCounter = document.getElementById('fps-counter');
                 if (fpsCounter) {
                     fpsCounter.textContent = `FPS: ${this.currentFps}`;
-                    fpsCounter.style.color = '#ff3333'; // Ensure it's red
                 }
+            }
+            
+            // Check for state recovery needs (collision occurred but screen didn't show)
+            if (this.collisionDetected && this.isRunning && 
+                (now - this.lastCollisionTime > 3000)) {
+                console.log('Detected stuck state in animation loop: collision detected 3s ago but game still running');
+                this.gameOver();
+                return;
             }
             
             // Track render performance during the initial period
@@ -1705,8 +1922,13 @@ class Game {
                     });
                 }
             }
+            
+            // Update multiplayer
+            if (this.multiplayer && this.isRunning) {
+                this.multiplayer.updateServer();
+            }
         } catch (error) {
-            console.error('Error in animation loop:', error);
+            console.error('Animation error:', error);
         }
     }
 
@@ -2022,5 +2244,22 @@ class Game {
         
         // Return true if the device is mobile and has either low memory or few CPU cores
         return isMobile && (hasLowMemory || hasLowCores);
+    }
+
+    // Add a method to update the high score display with player name
+    updateHighScoreDisplay() {
+        const highScoreElement = document.getElementById('high-score');
+        if (!highScoreElement) return;
+        
+        // Get local high score using the correct keys
+        const highScore = localStorage.getItem('tapDashHighScore') || 0;
+        const playerName = localStorage.getItem('tapDashPlayerName') || '';
+        
+        // Display high score with player name in brackets
+        if (playerName) {
+            highScoreElement.textContent = `Best: ${Math.floor(highScore)} (${playerName})`;
+        } else {
+            highScoreElement.textContent = `Best: ${Math.floor(highScore)}`;
+        }
     }
 }
