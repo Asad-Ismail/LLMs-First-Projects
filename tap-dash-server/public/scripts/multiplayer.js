@@ -156,7 +156,6 @@ class MultiplayerManager {
                 // Update local high score if server high score is higher
                 localStorage.setItem('tapDashHighScore', highestScore);
                 localStorage.setItem('tapDashPlayerName', topPlayer);
-                console.log(`Updated local high score to ${highestScore} by ${topPlayer}`);
                 
                 // Only update the display at game over, not in real-time
                 // We'll let the game.gameOver() method handle displaying

@@ -772,7 +772,8 @@ class Game {
             return;
         }
         
-        console.log('Game over - stopping game and showing end screen');
+        // Remove excessive logging
+        // console.log('Game over - stopping game and showing end screen');
         this.isRunning = false;
         this.gameStarted = false; // Make sure gameStarted is also reset
         
@@ -850,13 +851,15 @@ class Game {
     }
     
     restartGame() {
-        console.log('Restarting game');
+        // Remove excessive logging
+        // console.log('Restarting game');
         
         try {
             // MODIFIED: Make sure game over screen is actually hidden
             const gameOverElement = document.getElementById('game-over');
             if (gameOverElement) {
-                console.log('Hiding game over screen');
+                // Remove excessive logging
+                // console.log('Hiding game over screen');
                 // Force hide by setting display style directly, in case CSS class isn't working
                 gameOverElement.classList.add('hidden');
                 gameOverElement.style.display = 'none';
@@ -1115,9 +1118,6 @@ class Game {
                     this.lastCollisionObstacle = obstacle;
                     this.lastCollisionTime = performance.now();
                     
-                    // Record collision in console for debugging
-                    console.log('Collision detected with obstacle', obstacle.type, 'at time', this.lastCollisionTime);
-                    
                     // Handle collision
                     this.handleCollision(obstacle);
                     return true;
@@ -1134,8 +1134,6 @@ class Game {
     // When collision happens, create visual effect
     handleCollision(obstacle) {
         try {
-            console.log('Handling collision with', obstacle.type);
-            
             // Prevent duplicate collision handling (important for browser switching)
             if (!this.isRunning) {
                 console.log('Game already stopped, ignoring collision');
@@ -1284,13 +1282,13 @@ class Game {
         
         const isColliding = overlapX && overlapY && overlapZ;
         
-        // Debug collision info if colliding
+        // Remove excessive debug collision info logging
         if (isColliding) {
-            console.log('Collision details:', {
-                player: { pos: pos1, size: size1 },
-                obstacle: { pos: pos2, size: size2 },
-                overlap: { x: overlapX, y: overlapY, z: overlapZ }
-            });
+            // console.log('Collision details:', {
+            //     player: { pos: pos1, size: size1 },
+            //     obstacle: { pos: pos2, size: size2 },
+            //     overlap: { x: overlapX, y: overlapY, z: overlapZ }
+            // });
             
             // For debugging: visualize collision boxes
             this.visualizeCollisionBoxes(pos1, pos2, size1, size2);
