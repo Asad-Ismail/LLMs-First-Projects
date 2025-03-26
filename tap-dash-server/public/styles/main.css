@@ -890,20 +890,35 @@ button:active {
 
 #username-input {
     width: 100%;
-    padding: 12px 15px;
-    margin-bottom: 20px;
+    padding: 6px 10px;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     background-color: rgba(255, 255, 255, 0.9);
     color: #333;
-    font-size: 18px;
+    font-size: 14px;
     outline: none;
     transition: all 0.3s ease;
+    text-align: center;
 }
 
 #username-input:focus {
     box-shadow: 0 0 15px rgba(0, 200, 255, 0.8);
     background-color: #fff;
+}
+
+#username-input::placeholder {
+    font-size: 14px;
+    color: #777;
+}
+
+#username-input:focus {
+    box-shadow: 0 0 15px rgba(0, 200, 255, 0.8);
+    background-color: #fff;
+}
+
+#username-input::placeholder {
+    font-size: 14px;
+    color: #777;
 }
 
 #join-button {
@@ -982,27 +997,9 @@ button:active {
 
 /* Username section on start screen */
 #username-section {
-    margin-bottom: 25px;
-    width: 80%;
-    max-width: 280px;
-}
-
-#username-input {
-    width: 100%;
-    padding: 8px 12px;
-    border: none;
-    border-radius: 8px;
-    background-color: rgba(255, 255, 255, 0.9);
-    color: #333;
-    font-size: 16px;
-    outline: none;
-    transition: all 0.3s ease;
-    text-align: center;
-}
-
-#username-input:focus {
-    box-shadow: 0 0 15px rgba(0, 200, 255, 0.8);
-    background-color: #fff;
+    margin-bottom: 20px;
+    width: 50%;
+    max-width: 180px;
 }
 
 /* Disabled button style */

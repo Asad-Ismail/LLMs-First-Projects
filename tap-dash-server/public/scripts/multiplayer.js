@@ -197,7 +197,11 @@ class MultiplayerManager {
             } else if (this.game.scene) {
                 // Create new mesh for player
                 const geometry = new THREE.SphereGeometry(0.3, 16, 16);
-                const material = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.7 });
+                const material = new THREE.MeshBasicMaterial({ 
+                    color: 0xf0f4ff, 
+                    transparent: true, 
+                    opacity: 0.6 
+                });
                 const mesh = new THREE.Mesh(geometry, material);
                 
                 // Add player name label
