@@ -41,7 +41,7 @@ class TrailSystem {
     
     initParticleSystem() {
         // Max number of particles active at any time
-        this.maxParticles = 60; // Reduced from 100 to 60
+        this.maxParticles = 40; // Reduced from 100 to 60
         
         // Arrays to hold particle data
         this.positions = new Float32Array(this.maxParticles * 3);
@@ -349,7 +349,7 @@ class TrailSystem {
                 // Update last creation time
                 this.lastTrailTime = Date.now();
             }
-        }, 40); // Increased from default (likely 30ms) to 40ms
+        }, 60); // Increased from 40ms to 60ms for better performance
     }
     
     stopContinuousTrail() {
