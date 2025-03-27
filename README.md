@@ -8,8 +8,12 @@ Tap Dash is a one-tap runner game where you control a character that automatical
 
 ### Game Preview
 
-<video src="tap-dash-server/videos/tap-dash-single-player.mp4" controls="controls" style="max-width: 730px;">
-</video>
+<a href="tap-dash-server/videos/tap-dash-single-player.mp4" target="_blank">
+  <img src="tap-dash-server/videos/thumbnail.png" alt="Tap Dash Gameplay" width="450">
+</a>
+<p align="center">
+  <a href="tap-dash-server/videos/tap-dash-single-player.mp4" target="_blank">Click to watch gameplay video</a>
+</p>
 
 You can play the game [here](https://llms-first-projects.onrender.com/). Please note that the server may take a few minutes to start up on first access, as it automatically shuts down after 15 minutes of inactivity to conserve resources. If you enjoy the game and would like to help keep the servers running continuously, please consider supporting this project!
 
@@ -37,7 +41,7 @@ The process works in three steps:
 Note: While we use Replicate for convenient API access to video generation models, this is a paid service. You can alternatively self-host these models or use other providers.
 
 <p align="center">
-  <img src="text2Videos/assets/workflow.png">
+  <img src="text2Videos/assets/workflow.png" width="450">
 </p>
 
 #### A short 5 sec example
@@ -47,13 +51,13 @@ Note: While we use Replicate for convenient API access to video generation model
     <td><img src="text2Videos/assets/dragon.png" width="250" alt="Frame 1"></td>
     <td><img src="text2Videos/assets/dragon2.png" width="250" alt="Frame 2"></td>
     <td>➡️</td>
-    <td><video src="text2Videos/assets/dragon.mp4" controls="controls" width="250"></video></td>
+    <td><a href="text2Videos/assets/dragon.mp4" target="_blank"><img src="text2Videos/assets/dragon.png" width="250" alt="Click to watch video"></a></td>
   </tr>
   <tr>
     <td align="center">Frame 1</td>
     <td align="center">Frame 2</td>
     <td></td>
-    <td align="center">Generated Video</td>
+    <td align="center"><a href="text2Videos/assets/dragon.mp4" target="_blank">Click to watch video</a></td>
   </tr>
 </table>
 
