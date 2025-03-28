@@ -1,0 +1,9 @@
+## Route-Based Best Airlines
+
+In this project, we explore the idea of route-based best airlines.
+
+## Motivation
+
+Research and my personal experience strongly indicates that airlines do offer different levels of service depending on the route. This is evident in the varying availability and features of cabin classes, with long-haul international flights typically offering a wider range of premium options like lie-flat seats and enhanced dining compared to shorter domestic routes, which might focus on basic economy and a domestic first class. Amenities within the same class can also differ; for instance, premium economy on international flights often includes better food and baggage allowances, unlike its domestic counterpart which mainly offers more legroom. Airlines strategically tailor these offerings based on the anticipated demand and profitability of a route, investing more in premium services on routes where passengers are willing to pay more for comfort and convenience.
+
+Several operational and strategic factors contribute to this route-based service variation. Flight frequency and the type of aircraft deployed are adjusted based on demand, distance, and airport capabilities. Routes with high demand, especially from business travelers, often see higher frequencies, while longer distances necessitate larger aircraft. The level of competition on a route also influences service quality, with more competitive routes potentially leading to better on-time performance. Furthermore, airlines utilize tools like the Quality of Service Index (QSI) during route planning to assess passenger preferences for factors like schedules and aircraft type, which ultimately informs the service levels offered to maximize competitiveness and profitability in each specific market.

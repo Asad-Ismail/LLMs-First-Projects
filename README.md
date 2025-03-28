@@ -8,9 +8,12 @@ Tap Dash is a one-tap runner game where you control a character that automatical
 
 ### Game Preview
 
+<p align="center">
 <a href="tap-dash-server/videos/tap-dash-single-player.mp4" target="_blank">
   <img src="tap-dash-server/videos/thumbnail.png" alt="Tap Dash Gameplay" width="450">
 </a>
+</p>
+
 <p align="center">
   <a href="tap-dash-server/videos/tap-dash-single-player.mp4" target="_blank">Click to watch gameplay video</a>
 </p>
@@ -63,3 +66,4 @@ Note: While we use Replicate for convenient API access to video generation model
 
 
 
+3.
