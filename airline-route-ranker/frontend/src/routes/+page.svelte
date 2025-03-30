@@ -98,24 +98,39 @@
 </script>
 
 <div class="min-h-screen bg-sky-dark bg-[url('/starry-sky.svg')] bg-cover bg-fixed">
-  <!-- Header & Navigation -->
-  <header class="py-4 bg-sky-dark/80 backdrop-blur-sm border-b border-sky-accent/20 sticky top-0 z-10">
+  <!-- Enhanced Header & Navigation -->
+  <header class="py-3 bg-gradient-to-r from-sky-dark via-sky-dark/95 to-sky-dark border-b border-sky-accent/30 sticky top-0 z-10 backdrop-blur-md shadow-lg">
     <div class="container mx-auto px-4 flex justify-between items-center">
-      <div class="flex-1"></div>
-      <div class="flex items-center gap-2 justify-center flex-1">
-        <img src="/plane-takeoff.svg" alt="Flight Ranking" class="h-8 w-8" />
-        <h1 class="text-2xl font-bold text-white">Flight Reliability Rankings</h1>
+      <div class="flex-1 flex justify-start">
+        <div class="hidden md:flex bg-white/5 hover:bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full transition-all duration-300">
+          <a href="/" class="text-white/90 hover:text-sky-accent transition-colors text-sm font-medium">Home</a>
+        </div>
       </div>
+      
+      <div class="flex items-center gap-3 justify-center flex-1">
+        <div class="bg-sky-accent/10 rounded-full p-2 shadow-[0_0_15px_rgba(56,189,248,0.3)] animate-pulse-slow">
+          <img src="/plane-takeoff.svg" alt="Flight Ranking" class="h-7 w-7 transform -rotate-12" />
+        </div>
+        <h1 class="text-2xl font-bold text-white text-shadow-sm">
+          <span class="text-sky-accent">Flight</span> Reliability Rankings
+        </h1>
+      </div>
+      
       <nav class="hidden md:flex gap-6 justify-end flex-1">
-        <a href="/" class="text-white hover:text-sky-accent transition">Home</a>
-        <a href="/about" class="text-white hover:text-sky-accent transition">About</a>
-        <a href="/faq" class="text-white hover:text-sky-accent transition">FAQ</a>
+        <div class="flex gap-2 bg-white/5 hover:bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full transition-all duration-300">
+          <a href="/about" class="text-white/90 hover:text-sky-accent transition-colors text-sm font-medium">About</a>
+          <span class="text-sky-accent/50">|</span>
+          <a href="/faq" class="text-white/90 hover:text-sky-accent transition-colors text-sm font-medium">FAQ</a>
+        </div>
       </nav>
+      
       <button class="md:hidden text-white flex-1 flex justify-end">
         <!-- Hamburger icon for mobile menu -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
-        </svg>
+        <div class="bg-white/5 hover:bg-white/10 p-2 rounded-lg transition-all duration-300">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+          </svg>
+        </div>
       </button>
     </div>
   </header>
@@ -185,9 +200,9 @@
           <button
             on:click={handleSearch}
             disabled={isLoading || origin.length !== 3 || destination.length !== 3}
-            class="bg-flight-primary hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg 
-                   transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed
-                   flex items-center gap-2 shadow-md"
+            class="bg-gradient-to-r from-flight-primary to-sky-accent hover:from-sky-accent hover:to-flight-primary text-white font-bold py-3 px-8 rounded-lg 
+                   transition-all duration-300 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed
+                   flex items-center gap-2 shadow-lg hover:shadow-[0_5px_15px_rgba(59,130,246,0.4)] transform hover:-translate-y-0.5"
           >
             {#if isLoading}
               <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

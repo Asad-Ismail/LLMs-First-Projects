@@ -11,8 +11,32 @@ export default {
         'flight-success': '#10B981', /* For good reliability scores */
         'flight-warning': '#F59E0B', /* For medium reliability scores */
         'flight-danger': '#EF4444', /* For poor reliability scores */
-      }
+      },
+      animation: {
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
+      textShadow: {
+        'sm': '0 1px 2px rgba(0, 0, 0, 0.25)',
+      },
     }
   },
-  plugins: []
+  plugins: [
+    function ({ addUtilities }) {
+      const newUtilities = {
+        '.text-shadow-sm': {
+          textShadow: '0 1px 2px rgba(0, 0, 0, 0.25)',
+        },
+        '.text-shadow': {
+          textShadow: '0 2px 4px rgba(0, 0, 0, 0.25)',
+        },
+        '.text-shadow-md': {
+          textShadow: '0 4px 8px rgba(0, 0, 0, 0.25)',
+        },
+        '.text-shadow-none': {
+          textShadow: 'none',
+        },
+      }
+      addUtilities(newUtilities)
+    }
+  ]
 }; 
