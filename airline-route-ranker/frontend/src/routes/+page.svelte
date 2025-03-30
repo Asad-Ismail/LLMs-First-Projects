@@ -137,9 +137,56 @@
   
   <!-- Main Content with Centered Search Form -->
   <div class="container mx-auto p-4 flex flex-col items-center justify-center" style="min-height: calc(100vh - 80px);">
+    <!-- Tagline Section -->
+    <div class="text-center mb-2 max-w-3xl px-4">
+      <h2 class="text-white text-xl md:text-2xl font-medium mb-3 text-shadow">
+        <span class="text-sky-accent font-bold">Know</span> Before You Go
+      </h2>
+      <p class="text-cloud-light/80 leading-relaxed">
+        Make informed travel decisions with real-time reliability data before booking your next flight.
+        <span class="hidden md:inline">Our rankings focus on specific routes you care about, using both historical and recent performance data — not just general airline ratings.</span>
+      </p>
+      <div class="flex flex-wrap justify-center gap-3 mt-4">
+        <div class="bg-white/5 backdrop-blur-sm rounded-full px-3 py-1 text-sm text-white/90 flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-flight-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Route-Specific Data</span>
+        </div>
+        <div class="bg-white/5 backdrop-blur-sm rounded-full px-3 py-1 text-sm text-white/90 flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-flight-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Updated Daily</span>
+        </div>
+        <div class="bg-white/5 backdrop-blur-sm rounded-full px-3 py-1 text-sm text-white/90 flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-flight-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Avoid Delays & Cancellations</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Visual Connection -->
+    <div class="relative flex justify-center w-full mb-6">
+      <div class="w-px h-12 bg-gradient-to-b from-sky-accent/50 to-transparent"></div>
+      <div class="absolute bottom-0 w-8 h-8 flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-sky-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+        </svg>
+      </div>
+    </div>
+    
     <!-- Redesigned Search Form -->
     <div class="w-full max-w-3xl p-6 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg">
       <div class="flex flex-col gap-8">
+        <!-- Form Title -->
+        <div class="text-center">
+          <h3 class="text-white font-semibold text-lg">Compare Flight Routes</h3>
+          <p class="text-white/70 text-sm mt-1">Enter origin and destination airports to see reliability rankings</p>
+        </div>
+      
         <!-- Airport Inputs Row -->
         <div class="flex flex-col md:flex-row gap-6 items-center justify-center">
           <!-- Origin Airport Input with Take-off Icon -->
