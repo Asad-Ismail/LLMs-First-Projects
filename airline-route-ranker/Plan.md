@@ -49,3 +49,18 @@ Install deps: npm install
 Run dev server: npm run dev
 
 Access: Open your browser to http://localhost:5173 (or whatever port SvelteKit uses).
+
+/* Suggested color palette - can be added to tailwind.config.js */
+colors: {
+  'sky-dark': '#0F172A',  /* For starry background */
+  'sky-accent': '#38BDF8', /* For highlights and accents */
+  'cloud-light': '#F1F5F9', /* For light elements */
+  'flight-primary': '#3B82F6', /* Primary button/interactive color */
+  'flight-success': '#10B981', /* For good reliability scores */
+  'flight-warning': '#F59E0B', /* For medium reliability scores */
+  'flight-danger': '#EF4444', /* For poor reliability scores */
+}
+
+<div class="min-h-screen bg-sky-dark bg-[url('/images/starry-sky-bg.jpg')] bg-cover bg-fixed">
+  <!-- Main content here -->
+</div>

@@ -1,15 +1,28 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
   import AirportInput from '$lib/components/AirportInput.svelte';
   import FlightCard from '$lib/components/FlightCard.svelte';
   import Loader from '$lib/components/Loader.svelte';
   import ErrorMessage from '$lib/components/ErrorMessage.svelte';
 
+  // Define types for your data
+  type FlightRanking = {
+    flight_number: string;
+    // Add other properties that would be in your flight data
+    airline?: string;
+    departure_time?: string;
+    arrival_time?: string;
+    reliability_score?: number;
+    on_time_percentage?: number;
+    cancellation_rate?: number;
+    // Add more as needed
+  };
+
   let origin = '';
   let destination = '';
-  let rankings = [];
+  let rankings: FlightRanking[] = [];
   let isLoading = false;
-  let error = null;
+  let error: string | null = null;
   let searchedRoute = ''; // To display "Results for LHR -> JFK"
 
   // Backend API URL (use environment variables for production)
@@ -47,9 +60,9 @@
           error = `No flight data found for the route ${searchedRoute}. Check airports or try later.`;
       }
 
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Fetch error:", err);
-      error = `Failed to fetch rankings: ${err.message}. Is the backend running?`;
+      error = `Failed to fetch rankings: ${err instanceof Error ? err.message : 'Unknown error'}. Is the backend running?`;
       rankings = []; // Clear rankings on error
     } finally {
       isLoading = false;
@@ -84,54 +97,115 @@
 
 </script>
 
-<div class="container mx-auto p-4 md:p-8 max-w-4xl">
-  <h1 class="text-3xl md:text-4xl font-bold text-center mb-6 text-gray-800 dark:text-gray-100">
-    Flight Reliability Rankings
-  </h1>
-
-  <!-- Route Selection Form -->
-  <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 mb-8">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-      <AirportInput label="Origin Airport (IATA)" bind:value={origin} placeholder="e.g., LHR" />
-      <AirportInput label="Destination Airport (IATA)" bind:value={destination} placeholder="e.g., JFK" />
-      <button
-        on:click={handleSearch}
-        disabled={isLoading || origin.length !== 3 || destination.length !== 3}
-        class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {#if isLoading}
-          Searching...
-        {:else}
-          Search Flights
-        {/if}
+<div class="min-h-screen bg-sky-dark bg-[url('/starry-sky.svg')] bg-cover bg-fixed">
+  <!-- Header & Navigation -->
+  <header class="py-4 bg-sky-dark/80 backdrop-blur-sm border-b border-sky-accent/20 sticky top-0 z-10">
+    <div class="container mx-auto px-4 flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <img src="/plane-takeoff.svg" alt="Flight Ranking" class="h-8 w-8 text-white" />
+        <h1 class="text-2xl font-bold text-white">Flight Reliability Rankings</h1>
+      </div>
+      <nav class="hidden md:flex gap-6">
+        <a href="/" class="text-white hover:text-sky-accent transition">Home</a>
+        <a href="/about" class="text-white hover:text-sky-accent transition">About</a>
+        <a href="/faq" class="text-white hover:text-sky-accent transition">FAQ</a>
+      </nav>
+      <button class="md:hidden text-white">
+        <!-- Hamburger icon for mobile menu -->
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+        </svg>
       </button>
     </div>
-  </div>
-
-  <!-- Loading State -->
-  {#if isLoading}
-    <Loader />
-  {/if}
-
-  <!-- Error Message -->
-  {#if error && !isLoading}
-    <ErrorMessage message={error} />
-  {/if}
-
-  <!-- Results -->
-  {#if rankings.length > 0 && !isLoading}
-    <h2 class="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">
-      Results for {searchedRoute}
-    </h2>
-    <div class="space-y-4">
-      {#each rankings as flight, index (flight.flight_number)}
-        <FlightCard rank={index + 1} flightData={flight} />
-      {/each}
+  </header>
+  
+  <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+    <!-- Redesigned Search Form -->
+    <div class="max-w-4xl mx-auto p-6 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg mt-8">
+      <div class="flex flex-col md:flex-row gap-6 items-end relative">
+        <!-- Origin Airport Input with Take-off Icon -->
+        <div class="flex-1 relative">
+          <img src="/plane-takeoff.svg" alt="Origin" class="absolute left-2 top-1/2 -translate-y-1/2 h-6 w-6 text-sky-accent" />
+          <AirportInput 
+            label="Origin Airport" 
+            bind:value={origin} 
+            placeholder="e.g., LHR" 
+            classes="pl-10" 
+          />
+        </div>
+        
+        <!-- Route Connection Indicator -->
+        <div class="hidden md:flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-sky-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+          </svg>
+        </div>
+        
+        <!-- Destination Airport Input with Landing Icon -->
+        <div class="flex-1 relative">
+          <img src="/plane-landing.svg" alt="Destination" class="absolute left-2 top-1/2 -translate-y-1/2 h-6 w-6 text-sky-accent" />
+          <AirportInput 
+            label="Destination Airport" 
+            bind:value={destination} 
+            placeholder="e.g., JFK" 
+            classes="pl-10" 
+          />
+        </div>
+        
+        <!-- Search Button -->
+        <button
+          on:click={handleSearch}
+          disabled={isLoading || origin.length !== 3 || destination.length !== 3}
+          class="bg-flight-primary hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg 
+                 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed
+                 flex items-center gap-2 shadow-md"
+        >
+          {#if isLoading}
+            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Searching...
+          {:else}
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+            </svg>
+            Search Flights
+          {/if}
+        </button>
+      </div>
     </div>
-  {:else if !isLoading && searchedRoute && !error}
-      <!-- Handled by the error message now if rankings are empty -->
-  {/if}
 
+    <!-- Loading State -->
+    {#if isLoading}
+      <div class="mt-8">
+        <Loader />
+      </div>
+    {/if}
+
+    <!-- Error Message -->
+    {#if error && !isLoading}
+      <div class="mt-8">
+        <ErrorMessage message={error} />
+      </div>
+    {/if}
+
+    <!-- Results -->
+    {#if rankings.length > 0 && !isLoading}
+      <div class="mt-8 p-6 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg">
+        <h2 class="text-2xl font-semibold mb-4 text-white">
+          Results for {searchedRoute}
+        </h2>
+        <div class="space-y-4">
+          {#each rankings as flight, index (flight.flight_number)}
+            <FlightCard rank={index + 1} flightData={flight} />
+          {/each}
+        </div>
+      </div>
+    {:else if !isLoading && searchedRoute && !error}
+        <!-- Handled by the error message now if rankings are empty -->
+    {/if}
+  </div>
 </div>
 
 <style>
