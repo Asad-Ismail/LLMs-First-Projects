@@ -191,23 +191,12 @@
         <div class="flex flex-col md:flex-row gap-6 items-center justify-center">
           <!-- Origin Airport Input with Take-off Icon -->
           <div class="w-full md:w-5/12 relative">
-            <label class="block text-white text-sm font-bold mb-2 text-center">Origin Airport</label>
-            <div class="relative">
-              <span class="absolute left-2 top-1/2 -translate-y-1/2">
-                <img src="/plane-takeoff.svg" alt="Origin" class="h-6 w-6" />
-              </span>
-              <input
-                type="text"
-                bind:value={origin}
-                placeholder="E.G., LHR"
-                maxlength="3"
-                class="uppercase shadow appearance-none border rounded w-full py-2 pl-10 pr-3 text-gray-700 bg-white/90 leading-tight focus:outline-none focus:ring-2 focus:ring-sky-accent focus:border-transparent"
-                on:input={(e) => {
-                  const target = e.target as HTMLInputElement;
-                  origin = target.value.toUpperCase().replace(/[^A-Z]/g, '');
-                }}
-              />
-            </div>
+            <AirportInput 
+              label="Origin Airport"
+              bind:value={origin}
+              placeholder="E.G., LHR"
+              icon="/plane-takeoff.svg"
+            />
           </div>
           
           <!-- Route Connection Indicator -->
@@ -222,23 +211,12 @@
           
           <!-- Destination Airport Input with Landing Icon -->
           <div class="w-full md:w-5/12 relative">
-            <label class="block text-white text-sm font-bold mb-2 text-center">Destination Airport</label>
-            <div class="relative">
-              <span class="absolute left-2 top-1/2 -translate-y-1/2">
-                <img src="/plane-landing.svg" alt="Destination" class="h-6 w-6" />
-              </span>
-              <input
-                type="text"
-                bind:value={destination}
-                placeholder="E.G., JFK"
-                maxlength="3"
-                class="uppercase shadow appearance-none border rounded w-full py-2 pl-10 pr-3 text-gray-700 bg-white/90 leading-tight focus:outline-none focus:ring-2 focus:ring-sky-accent focus:border-transparent"
-                on:input={(e) => {
-                  const target = e.target as HTMLInputElement;
-                  destination = target.value.toUpperCase().replace(/[^A-Z]/g, '');
-                }}
-              />
-            </div>
+            <AirportInput 
+              label="Destination Airport"
+              bind:value={destination}
+              placeholder="E.G., JFK"
+              icon="/plane-landing.svg"
+            />
           </div>
         </div>
         
