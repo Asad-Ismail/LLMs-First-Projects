@@ -190,8 +190,8 @@
             />
           </div>
           
-          <!-- Simple Arrow -->
-          <div class="flex justify-center items-center w-10 h-10 my-2 md:my-0">
+          <!-- Simple Arrow with Perfect Alignment -->
+          <div class="flex justify-center items-center w-10 h-10 my-2 md:mt-7">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-sky-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>
