@@ -61,6 +61,104 @@ uvicorn app.main:app --reload
 ```
 API will be available at http://localhost:8000
 
+
+### Backend Setup Details
+  1. Install Dependencies
+
+  First, install the required dependencies using pip:
+
+  cd /home/asad/dev/LLMs-First-Projects/airline-route-ranker/backend
+  pip install -r requirements.txt
+
+  2. Set Up Environment Variables
+
+  Create a .env file in the backend directory with your API keys:
+
+  cd /home/asad/dev/LLMs-First-Projects/airline-route-ranker/backend
+
+  Create a .env file with the following content (replace with your actual
+  API keys):
+
+  AMADUS_KEY=your_amadeus_api_key
+  AMADUS_SECRET=your_amadeus_api_secret
+  RAPIDAPI_KEY=your_rapidapi_key
+
+  You'll need:
+  - Amadeus API credentials for flight route searches (get from
+  https://developers.amadeus.com/)
+  - RapidAPI key for AeroDataBox access (get from
+  https://rapidapi.com/aedbx-aedbx/api/aerodatabox)
+
+  3. Run the Backend Server
+
+  Start the FastAPI server with Uvicorn:
+
+  cd /home/asad/dev/LLMs-First-Projects/airline-route-ranker/backend
+  uvicorn app.main:app --reload
+
+  The server will start on http://localhost:8000 by default.
+
+  4. Testing the API Endpoints
+
+  You can test the API endpoints using:
+
+  1. Web Browser: For simple GET requests
+  2. Curl: For command-line testing
+  3. FastAPI's Swagger UI: Available at http://localhost:8000/docs
+  4. Postman: For more advanced testing
+
+  Here are some example test requests:
+
+  Health Check Endpoint
+
+  curl http://localhost:8000/api/health
+
+  Expected response:
+  {"status":"ok","system_initialized":true}
+
+  Flight Rankings for a Route
+
+  curl http://localhost:8000/api/rankings/AMS/LHE
+
+  This will return flight rankings from Amsterdam (AMS) to Lahore (LHE).
+  You can try other airport pairs too.
+
+  Individual Flight Reliability
+
+  curl http://localhost:8000/api/flight/TK714
+
+  This will return reliability data for Turkish Airlines flight TK714.
+
+  5. Testing with the Frontend
+
+  To test with the frontend:
+
+  1. Make sure the backend is running on port 8000
+  2. Start the frontend development server:
+
+  cd /home/asad/dev/LLMs-First-Projects/airline-route-ranker/frontend
+  npm run dev
+
+  3. Open your browser to http://localhost:5173
+  4. Use the search form to find flights between airports (e.g., AMS to
+  LHE)
+
+  6. Troubleshooting Tips
+
+  - If you get API key errors, double-check your .env file
+  - If the server won't start, make sure all dependencies are installed
+  - For API response errors, check the backend terminal for detailed logs
+  - The first request for a route may be slow as it needs to fetch data;
+  subsequent requests will use the cache
+
+  7. Development Notes
+
+  - Any code changes will automatically reload thanks to the --reload flag
+  - Cache files are stored in the backend/cache directory
+  - The API has rate limits, so don't make too many requests in quick
+  succession
+
+
 ## 📈 API Data Sources
 
 The application integrates with multiple flight data providers:
@@ -75,9 +173,6 @@ The application integrates with multiple flight data providers:
 
 *Coming soon*
 
-## 📝 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 🤝 Contributing
 
