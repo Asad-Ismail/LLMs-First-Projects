@@ -166,6 +166,12 @@
           </svg>
           <span>Avoid Delays</span>
         </div>
+        <div class="bg-white/10 backdrop-blur-sm rounded-full px-5 py-2 text-sm text-white flex items-center gap-2 border border-white/10 shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-flight-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Includes Connections</span>
+        </div>
       </div>
     </div>
     
