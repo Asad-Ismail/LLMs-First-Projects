@@ -670,7 +670,8 @@ class FlightDataAnalyzer:
             int: Reliability score from 0-100, or None if data quality is insufficient
         """
         if not combined_data:
-            return 0
+            # Instead of returning 0, return a neutral score for no data
+            return 50
         
         # Check data quality
         data_quality = combined_data.get("data_quality", "unknown")
@@ -686,12 +687,22 @@ class FlightDataAnalyzer:
                 num_flights = len(combined_data.get("individual_flights", []))
                 if num_flights < 3:
                     print(f"  ⚠️ Very limited data sample: Only {num_flights} recent flights")
+                    # For very limited data, use a minimum baseline score
+                    base_score = 60
+                else:
+                    base_score = 70
                 
                 # Use arrival delay percentage if available, otherwise use departure
                 arrival_stats = combined_data.get("delay_statistics", {}).get("arrival", {})
                 if arrival_stats:
                     print("  Using arrival statistics for reliability score")
-                    overall_delay = arrival_stats.get("delayed_percentage", 0)
+                    
+                    # Consider flights delayed by less than 15 minutes as on-time
+                    on_time_pct = 100 - arrival_stats.get("delayed_percentage", 0)
+                    on_time_within_15min = arrival_stats.get("delay_buckets", {}).get("on_time_within_15min", 0)
+                    
+                    # Add the percentage of flights that were slightly delayed (within 15 min) to on-time percentage
+                    adjusted_on_time_pct = on_time_pct + on_time_within_15min
                     
                     # Get severity buckets from arrival
                     delay_buckets = arrival_stats.get("delay_buckets", {})
@@ -701,7 +712,13 @@ class FlightDataAnalyzer:
                 else:
                     print("  Using departure statistics for reliability score (no arrival data)")
                     departure_stats = combined_data.get("delay_statistics", {}).get("departure", {})
-                    overall_delay = departure_stats.get("delayed_percentage", 0)
+                    
+                    # Consider flights delayed by less than 15 minutes as on-time
+                    on_time_pct = 100 - departure_stats.get("delayed_percentage", 0)
+                    on_time_within_15min = departure_stats.get("delay_buckets", {}).get("on_time_within_15min", 0)
+                    
+                    # Add the percentage of flights that were slightly delayed (within 15 min) to on-time percentage
+                    adjusted_on_time_pct = on_time_pct + on_time_within_15min
                     
                     # Get severity buckets from departure
                     delay_buckets = departure_stats.get("delay_buckets", {})
@@ -709,21 +726,22 @@ class FlightDataAnalyzer:
                     moderate_delay = delay_buckets.get("moderate_delay_30_60min", 0)
                     severe_delay = delay_buckets.get("severe_delay_60min_plus", 0)
                 
-                # Calculate raw score
-                on_time_pct = 100 - overall_delay
-                severity_penalty = (slight_delay * 0.5 + moderate_delay * 1.5 + severe_delay * 3) / 100
-                raw_score = on_time_pct - (severity_penalty * 10)
+                # Calculate raw score with reduced penalties
+                # Use adjusted on-time percentage that includes flights within 15 min tolerance
+                # Reduce the penalty for slight delays (15-30min)
+                severity_penalty = (slight_delay * 0.3 + moderate_delay * 1.0 + severe_delay * 2.5) / 100
+                raw_score = adjusted_on_time_pct - (severity_penalty * 10)
                 
                 # Add explanation for very low scores
-                if raw_score <= 10:
-                    print(f"  ⚠️ Low reliability score due to: {overall_delay}% delayed flights with severity breakdown: slight {slight_delay}%, moderate {moderate_delay}%, severe {severe_delay}%")
+                if raw_score <= 20:
+                    print(f"  ⚠️ Low reliability score due to: {100 - adjusted_on_time_pct}% delayed flights with severity breakdown: slight {slight_delay}%, moderate {moderate_delay}%, severe {severe_delay}%")
                 
-                # Apply confidence cap and return
-                return min(85, max(0, round(raw_score)))
+                # Apply confidence cap and minimum base score for missing historical data
+                return min(85, max(base_score, round(raw_score)))
             else:
                 # No arrival stats, very limited confidence
                 print("  ⚠️ Cannot calculate reliable score - insufficient arrival data")
-                return 50  # Neutral score indicating uncertainty
+                return 60  # Neutral score indicating uncertainty but better than 0
         
         elif data_quality == "missing_recent":
             # Missing recent data - use historical with lowered confidence
@@ -799,18 +817,22 @@ class FlightDataAnalyzer:
         
         # Get severity buckets
         delay_buckets = combined_data.get("combined_statistics", {}).get("delay_buckets", {})
+        on_time_within_15min = delay_buckets.get("on_time_within_15min", 0)
         slight_delay = delay_buckets.get("slight_delay_15_30min", 0)
         moderate_delay = delay_buckets.get("moderate_delay_30_60min", 0)
         severe_delay = delay_buckets.get("severe_delay_60min_plus", 0)
         
-        # Calculate weighted score (higher delay percentage = lower score)
+        # Calculate weighted score with adjusted on-time percentage
         on_time_pct = 100 - overall_delay
         
-        # Apply penalties for more severe delays
-        severity_penalty = (slight_delay * 0.5 + moderate_delay * 1.5 + severe_delay * 3) / 100
+        # Add flights within 15 min to on-time percentage
+        adjusted_on_time_pct = on_time_pct + on_time_within_15min
+        
+        # Apply reduced penalties for more severe delays
+        severity_penalty = (slight_delay * 0.3 + moderate_delay * 1.0 + severe_delay * 2.5) / 100
         
         # Calculate final score (0-100 scale)
-        raw_score = on_time_pct - (severity_penalty * 10)
+        raw_score = adjusted_on_time_pct - (severity_penalty * 10)
         
-        # Ensure score is in 0-100 range
-        return max(0, min(100, round(raw_score)))
+        # Ensure score is in 0-100 range and never below 10 if we have any data
+        return max(10, min(100, round(raw_score)))

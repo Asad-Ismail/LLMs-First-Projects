@@ -1,100 +1,70 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import AirportInput from '$lib/components/AirportInput.svelte';
+  import DateInput from '$lib/components/DateInput.svelte';
   import FlightCard from '$lib/components/FlightCard.svelte';
   import Loader from '$lib/components/Loader.svelte';
   import ErrorMessage from '$lib/components/ErrorMessage.svelte';
-
-  // Define types for your data
-  type FlightRanking = {
-    flight_number: string;
-    // Add other properties that would be in your flight data
-    airline?: string;
-    departure_time?: string;
-    arrival_time?: string;
-    reliability_score?: number;
-    on_time_percentage?: number;
-    cancellation_rate?: number;
-    // Add more as needed
-  };
+  import { fetchRouteRankings, fetchHealthStatus, type RouteRankingResponse, type RouteData } from '$lib/api';
 
   let origin = '';
   let destination = '';
-  let rankings: FlightRanking[] = [];
+  let routeData: RouteRankingResponse | null = null;
   let isLoading = false;
   let error: string | null = null;
   let searchedRoute = ''; // To display "Results for LHR -> JFK"
+  let backendHealthy = true;
 
-  // Backend API URL (use environment variables for production)
-  const API_BASE_URL = 'http://localhost:8000'; // Your FastAPI backend URL
-
-  async function fetchRankings() {
+  async function handleSearch() {
+    // Basic validation before fetching
     if (!origin || !destination || origin.length !== 3 || destination.length !== 3) {
       error = 'Please enter valid 3-letter IATA codes for origin and destination.';
-      rankings = [];
+      routeData = null;
       searchedRoute = '';
       return;
     }
 
     isLoading = true;
     error = null;
-    rankings = [];
+    routeData = null;
     searchedRoute = `${origin.toUpperCase()} → ${destination.toUpperCase()}`; // Set route display string
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/rankings/${origin.toUpperCase()}/${destination.toUpperCase()}`);
-
-      if (!response.ok) {
-        let errorDetail = `HTTP error ${response.status}`;
-        try {
-            const errorData = await response.json();
-            errorDetail = errorData.detail || errorDetail;
-        } catch (e) { /* Ignore if response body isn't JSON */ }
-        throw new Error(errorDetail);
+      // Fetch routes without a date
+      const result = await fetchRouteRankings(
+        origin.toUpperCase(), 
+        destination.toUpperCase()
+      );
+      
+      routeData = result;
+      
+      // Check if we received routes
+      if (!routeData.routes || routeData.routes.length === 0) {
+        error = `No flight data found for the route ${searchedRoute}. Check airports or try later.`;
       }
-
-      const data = await response.json();
-      rankings = data;
-
-      if (rankings.length === 0) {
-          error = `No flight data found for the route ${searchedRoute}. Check airports or try later.`;
-      }
-
     } catch (err: unknown) {
       console.error("Fetch error:", err);
       error = `Failed to fetch rankings: ${err instanceof Error ? err.message : 'Unknown error'}. Is the backend running?`;
-      rankings = []; // Clear rankings on error
+      routeData = null;
     } finally {
       isLoading = false;
     }
   }
 
-  function handleSearch() {
-      // Basic validation before fetching
-      if (origin.length === 3 && destination.length === 3) {
-          fetchRankings();
-      } else {
-          error = 'Please enter valid 3-letter IATA codes (e.g., LHR, JFK).';
-      }
-  }
-
-  // Optional: Check backend health on load
+  // Check backend health on load
   onMount(async () => {
-      try {
-          const healthResponse = await fetch(`${API_BASE_URL}/api/health`);
-          if (!healthResponse.ok) {
-              console.warn("Backend health check failed or backend not running.");
-          } else {
-              const healthData = await healthResponse.json();
-              if (!healthData.system_initialized) {
-                  console.warn("Backend system not fully initialized (API key issue?).");
-              }
-          }
-      } catch (e) {
-          console.warn("Could not reach backend for health check.");
+    try {
+      const healthData = await fetchHealthStatus();
+      backendHealthy = healthData.status === 'ok' && healthData.system_initialized;
+      
+      if (!backendHealthy) {
+        console.warn("Backend system not fully initialized (API key issue?).");
       }
+    } catch (e) {
+      console.warn("Could not reach backend for health check.");
+      backendHealthy = false;
+    }
   });
-
 </script>
 
 <div class="min-h-screen bg-sky-dark bg-[url('/starry-sky.svg')] bg-cover bg-fixed bg-opacity-90">
@@ -175,16 +145,16 @@
       </div>
     </div>
     
-    <!-- Cleaner Search Form - No Visual Connection Element -->
+    <!-- Improved Search Form with Date -->
     <div class="w-full max-w-2xl p-6 rounded-2xl bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
       <div class="flex flex-col gap-6">
         <!-- Simplified Form - No Additional Explanation Text -->
         <div class="text-center">
-          <h3 class="text-white font-semibold text-xl text-shadow-sm">Compare Routes</h3>
+          <h3 class="text-white font-semibold text-xl text-shadow-sm">Compare Route Reliability</h3>
         </div>
       
-        <!-- Simplified Airport Inputs Row -->
-        <div class="flex flex-col md:flex-row gap-4 items-center justify-center">
+        <!-- Airports and Date Inputs -->
+        <div class="flex flex-col md:flex-row gap-4 items-start justify-center">
           <!-- Origin Airport Input -->
           <div class="w-full md:w-5/12 relative">
             <AirportInput 
@@ -197,7 +167,7 @@
           </div>
           
           <!-- Simple Arrow with Perfect Alignment -->
-          <div class="flex justify-center items-center w-10 h-10 my-2 md:mt-7">
+          <div class="hidden md:flex justify-center items-center w-10 h-10 mt-7">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-sky-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>
@@ -214,6 +184,15 @@
             />
           </div>
         </div>
+        
+        <!-- Backend Status Indicator -->
+        {#if !backendHealthy}
+          <div class="w-full rounded-lg bg-flight-danger/20 border border-flight-danger/40 p-3 text-center">
+            <p class="text-white text-sm">
+              ⚠️ Backend service appears to be unavailable. Results may not load correctly.
+            </p>
+          </div>
+        {/if}
         
         <!-- Simplified Search Button -->
         <div class="flex justify-center mt-2">
@@ -234,7 +213,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
               </svg>
-              <span>Find Best Flights</span>
+              <span>Find Reliable Routes</span>
             {/if}
           </button>
         </div>
@@ -255,16 +234,37 @@
       </div>
     {/if}
 
-    <!-- Simplified Results -->
-    {#if rankings.length > 0 && !isLoading}
-      <div class="mt-8 p-6 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg w-full max-w-2xl">
-        <h2 class="text-xl font-bold mb-4 text-white text-center">
-          Best Flights: <span class="text-sky-accent">{searchedRoute}</span>
-        </h2>
-        <div class="space-y-3">
-          {#each rankings as flight, index (flight.flight_number)}
+    <!-- Results Section -->
+    {#if routeData && routeData.routes && routeData.routes.length > 0 && !isLoading}
+      <div class="mt-8 p-6 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg w-full max-w-3xl">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+          <h2 class="text-xl font-bold text-white text-center md:text-left">
+            Best Routes: <span class="text-sky-accent">{searchedRoute}</span>
+          </h2>
+          
+          <!-- Travel date badge -->
+          {#if routeData.query.date}
+            <div class="mt-2 md:mt-0 bg-white/10 backdrop-blur-sm rounded-full px-4 py-1.5 text-sm text-white flex items-center gap-2 border border-white/10 shadow-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-sky-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span>{new Date(routeData.query.date).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}</span>
+            </div>
+          {/if}
+        </div>
+        
+        <!-- Filters applied -->
+        {#if routeData.query.filters_applied && routeData.query.filters_applied.length > 0}
+          <div class="mb-4 text-xs text-white/70">
+            <span class="font-medium">Filters:</span> {routeData.query.filters_applied.join(' • ')}
+          </div>
+        {/if}
+        
+        <!-- Route Cards -->
+        <div class="space-y-4">
+          {#each routeData.routes as route (route.source_offer_id)}
             <div>
-              <FlightCard rank={index + 1} flightData={flight} />
+              <FlightCard flightData={route} rank={route.rank} />
             </div>
           {/each}
         </div>
