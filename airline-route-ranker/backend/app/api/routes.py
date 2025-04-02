@@ -223,7 +223,7 @@ def get_flight_numbers_for_route(origin, destination, date=None, max_routes=5, m
                 "filters_applied": [
                     "Self-Operated Flights Only",
                     "Unique Routes",
-                    "Sorted by Price (Ascending), then Duration (Ascending)",
+                    "Smart Ranking (Reliability 40%, Price 35%, Duration 25%)",
                     f"Selected Top {max_routes}"
                 ],
                 "status": "No valid offers found in API response"
@@ -368,7 +368,7 @@ def get_flight_numbers_for_route(origin, destination, date=None, max_routes=5, m
             "filters_applied": [
                 "Self-Operated Flights Only",
                 "Unique Routes",
-                "Sorted by Price (Ascending), then Duration (Ascending)",
+                "Smart Ranking (Reliability 40%, Price 35%, Duration 25%)",
                 f"Selected Top {max_routes}"
             ]
         },

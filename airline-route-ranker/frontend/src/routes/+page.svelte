@@ -254,9 +254,9 @@
         </div>
         
         <!-- Filters applied -->
-        {#if routeData.query.filters_applied && routeData.query.filters_applied.length > 0}
+        {#if routeData && routeData.routes && routeData.routes.length > 0}
           <div class="mb-4 text-xs text-white/70">
-            <span class="font-medium">Filters:</span> {routeData.query.filters_applied.join(' • ')}
+            <span class="font-medium">Showing top {routeData.routes.length} results</span>
           </div>
         {/if}
         

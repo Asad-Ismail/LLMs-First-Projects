@@ -180,14 +180,42 @@ class FlightAnalysisSystem:
             enhanced_route["reliability_data"] = reliability_data
             enhanced_routes.append(enhanced_route)
         
-        # Sort routes by reliability score (if available), then by price
+        # Calculate normalized scores for each factor to use in the smart ranking
+        if enhanced_routes:
+            # Find min/max values for normalization
+            min_price = min(float(r.get("price", {}).get("amount", "9999")) for r in enhanced_routes)
+            max_price = max(float(r.get("price", {}).get("amount", "9999")) for r in enhanced_routes)
+            price_range = max_price - min_price if max_price > min_price else 1
+            
+            min_duration = min(r.get("duration_raw_minutes", 9999) for r in enhanced_routes)
+            max_duration = max(r.get("duration_raw_minutes", 9999) for r in enhanced_routes)
+            duration_range = max_duration - min_duration if max_duration > min_duration else 1
+            
+            # Calculate smart rank for each route
+            for route in enhanced_routes:
+                price = float(route.get("price", {}).get("amount", "9999"))
+                duration = route.get("duration_raw_minutes", 9999)
+                reliability = route.get("reliability_score", 0) or 0
+                
+                # Normalize each factor to 0-100 scale (higher is better)
+                price_score = 100 - ((price - min_price) / price_range * 100) if price_range > 0 else 50
+                duration_score = 100 - ((duration - min_duration) / duration_range * 100) if duration_range > 0 else 50
+                reliability_score = reliability  # Already on 0-100 scale
+                
+                # Calculate weighted smart rank (adjust weights as needed)
+                # 40% reliability, 35% price, 25% duration
+                smart_rank = (reliability_score * 0.40) + (price_score * 0.35) + (duration_score * 0.25)
+                route["smart_rank"] = round(smart_rank, 1)
+        
+        # Sort routes by smart rank (highest first)
         sorted_routes = sorted(
             enhanced_routes,
-            key=lambda r: (
-                -(r.get("reliability_score") or 0),  # Higher reliability score first 
-                float(r.get("price", {}).get("amount", "9999"))  # Lower price second
-            )
+            key=lambda r: -r.get("smart_rank", 0)  # Higher smart rank first
         )
+        
+        # Add final rank numbers based on sorted order
+        for i, route in enumerate(sorted_routes):
+            route["rank"] = i + 1
         
         # Construct final response
         return {
