@@ -60,7 +60,8 @@ async def get_flight_rankings(
     destination_iata: str = Path(..., min_length=3, max_length=3, regex="^[A-Z]{3}$"),
     date: Optional[str] = Query(None, regex="^\\d{4}-\\d{2}-\\d{2}$"),
     max_routes: int = Query(5, ge=1, le=10),
-    max_connections: int = Query(2, ge=0, le=3)
+    max_connections: int = Query(2, ge=0, le=3),
+    use_cache: bool = Query(True, description="Whether to use cached results if available")
 ):
     """
     Get ranked flight reliability data for a specific route.
@@ -71,6 +72,7 @@ async def get_flight_rankings(
         date: Optional specific date in YYYY-MM-DD format
         max_routes: Maximum number of routes to return (default: 5)
         max_connections: Maximum number of connections (default: 2)
+        use_cache: Whether to use cached results (default: True)
         
     Returns:
         List of ranked flights with reliability scores
@@ -87,7 +89,8 @@ async def get_flight_rankings(
             destination=destination_iata,
             date=date,
             max_routes=max_routes,
-            max_connections=max_connections
+            max_connections=max_connections,
+            use_cache=use_cache
         )
         
         # Handle errors
@@ -105,13 +108,15 @@ async def get_flight_rankings(
 
 @app.get("/api/flight/{flight_number}")
 async def get_flight_reliability(
-    flight_number: str = Path(..., regex="^[A-Z0-9]{2,8}$")
+    flight_number: str = Path(..., regex="^[A-Z0-9]{2,8}$"),
+    use_cache: bool = Query(True, description="Whether to use cached results if available")
 ):
     """
     Get reliability data for a specific flight number.
     
     Args:
         flight_number: The flight number to analyze (e.g., "BA123")
+        use_cache: Whether to use cached results (default: True)
         
     Returns:
         Flight reliability data
@@ -120,7 +125,7 @@ async def get_flight_reliability(
         raise HTTPException(status_code=503, detail="Backend system not initialized (check API key)")
 
     try:
-        flight_data = flight_system.analyze_flight(flight_number)
+        flight_data = flight_system.analyze_flight(flight_number, use_cache=use_cache)
         
         if not flight_data:
             raise HTTPException(status_code=404, detail=f"No data found for flight {flight_number}")

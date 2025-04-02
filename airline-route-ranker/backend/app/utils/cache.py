@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Cache configuration
 ROUTE_CACHE_EXPIRY = 30 * 24 * 60 * 60  # 30 days in seconds
-FLIGHT_CACHE_EXPIRY = 24 * 60 * 60  # 24 hours in seconds
+FLIGHT_CACHE_EXPIRY = 30 * 24 * 60 * 60  # 30 days in seconds
 CACHE_BASE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "cache")
 
 

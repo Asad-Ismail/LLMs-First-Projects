@@ -13,12 +13,13 @@ class FlightAnalysisSystem:
         """Initialize the flight analysis system."""
         self.reliability_api = FlightDataAPI(api_key)
     
-    def analyze_flight(self, flight_number: str) -> Dict[str, Any]:
+    def analyze_flight(self, flight_number: str, use_cache: bool = True) -> Dict[str, Any]:
         """
         Analyze a single flight using both historical and recent data.
         
         Args:
             flight_number: Flight number to analyze
+            use_cache: Whether to use cached results if available
             
         Returns:
             dict: Combined flight analysis
@@ -27,10 +28,10 @@ class FlightAnalysisSystem:
         
         # Fetch data
         print(f"Historical data for {flight_number}:")
-        historical_data = self.reliability_api.get_historical_delay_stats(flight_number)
+        historical_data = self.reliability_api.get_historical_delay_stats(flight_number, use_cache=use_cache)
         
         print(f"Recent data for {flight_number}:")
-        recent_data = self.reliability_api.get_recent_flights(flight_number)
+        recent_data = self.reliability_api.get_recent_flights(flight_number, use_cache=use_cache)
         
         # Process data
         processed_historical = FlightDataProcessor.process_historical_delay_stats(historical_data)
@@ -41,12 +42,13 @@ class FlightAnalysisSystem:
         
         return combined_data
     
-    def analyze_multiple_flights(self, flight_list: List[Dict[str, str]]) -> Dict[str, Dict[str, Any]]:
+    def analyze_multiple_flights(self, flight_list: List[Dict[str, str]], use_cache: bool = True) -> Dict[str, Dict[str, Any]]:
         """
         Analyze multiple flights.
         
         Args:
             flight_list: List of flight dictionaries with flight_number key
+            use_cache: Whether to use cached results if available
             
         Returns:
             dict: Dictionary of flight analyses keyed by flight number
@@ -62,11 +64,11 @@ class FlightAnalysisSystem:
             
             # Get historical data
             print(f"Historical data for {flight_number}:")
-            historical_data = self.reliability_api.get_historical_delay_stats(flight_number)
+            historical_data = self.reliability_api.get_historical_delay_stats(flight_number, use_cache=use_cache)
             
             # Get recent data
             print(f"Recent data for {flight_number}:")
-            recent_data = self.reliability_api.get_recent_flights(flight_number)
+            recent_data = self.reliability_api.get_recent_flights(flight_number, use_cache=use_cache)
             
             # Process data
             processed_historical = FlightDataProcessor.process_historical_delay_stats(historical_data)
@@ -134,7 +136,7 @@ class FlightAnalysisSystem:
         
         # Step 3: Analyze reliability of each flight
         print(f"Analyzing reliability for {len(flight_list)} flights...")
-        reliability_results = self.analyze_multiple_flights(flight_list)
+        reliability_results = self.analyze_multiple_flights(flight_list, use_cache=use_cache)
         
         # Step 4: Combine route and reliability data
         enhanced_routes = []

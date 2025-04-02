@@ -9,6 +9,7 @@
 
   let origin = '';
   let destination = '';
+  let travelDate = '';
   let routeData: RouteRankingResponse | null = null;
   let isLoading = false;
   let error: string | null = null;
@@ -30,10 +31,11 @@
     searchedRoute = `${origin.toUpperCase()} → ${destination.toUpperCase()}`; // Set route display string
 
     try {
-      // Fetch routes without a date
+      // Fetch routes with optional date
       const result = await fetchRouteRankings(
         origin.toUpperCase(), 
-        destination.toUpperCase()
+        destination.toUpperCase(),
+        travelDate || undefined
       );
       
       routeData = result;
@@ -117,27 +119,27 @@
       </p>
       
       <!-- Feature Badges with Better Readability -->
-      <div class="flex flex-wrap justify-center gap-4 mt-5">
-        <div class="bg-white/10 backdrop-blur-sm rounded-full px-5 py-2 text-sm text-white flex items-center gap-2 border border-white/10 shadow-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-flight-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div class="flex flex-wrap justify-center gap-2 mt-5">
+        <div class="bg-white/10 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs text-white flex items-center gap-2 border border-white/10 shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-flight-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span>Route-Specific</span>
         </div>
-        <div class="bg-white/10 backdrop-blur-sm rounded-full px-5 py-2 text-sm text-white flex items-center gap-2 border border-white/10 shadow-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-flight-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="bg-white/10 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs text-white flex items-center gap-2 border border-white/10 shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-flight-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span>Daily Updates</span>
         </div>
-        <div class="bg-white/10 backdrop-blur-sm rounded-full px-5 py-2 text-sm text-white flex items-center gap-2 border border-white/10 shadow-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-flight-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="bg-white/10 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs text-white flex items-center gap-2 border border-white/10 shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-flight-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span>Avoid Delays</span>
         </div>
-        <div class="bg-white/10 backdrop-blur-sm rounded-full px-5 py-2 text-sm text-white flex items-center gap-2 border border-white/10 shadow-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-flight-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="bg-white/10 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs text-white flex items-center gap-2 border border-white/10 shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-flight-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span>Includes Connections</span>
@@ -146,8 +148,8 @@
     </div>
     
     <!-- Improved Search Form with Date -->
-    <div class="w-full max-w-2xl p-6 rounded-2xl bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
-      <div class="flex flex-col gap-6">
+    <div class="w-full max-w-2xl p-4 rounded-2xl bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+      <div class="flex flex-col gap-4">
         <!-- Simplified Form - No Additional Explanation Text -->
         <div class="text-center">
           <h3 class="text-white font-semibold text-xl text-shadow-sm">Compare Route Reliability</h3>
@@ -184,22 +186,37 @@
             />
           </div>
         </div>
+
+        <!-- Integrated Date Input (More Compact) -->
+        <div class="flex justify-center -mt-3">
+          <div class="w-full max-w-[140px]">
+            <div class="text-[10px] text-white/70 mb-0.5 text-center">Date (Optional)</div>
+            <input
+              type="date"
+              bind:value={travelDate}
+              min={new Date().toISOString().split('T')[0]}
+              max={(() => { const d = new Date(); d.setDate(d.getDate() + 90); return d.toISOString().split('T')[0] })()}
+              class="w-full py-1 px-1.5 bg-white/10 backdrop-blur-sm border border-white/30 rounded-lg text-white text-xs
+                    focus:outline-none focus:ring-1 focus:ring-sky-accent/50 shadow-sm [color-scheme:dark]"
+            />
+          </div>
+        </div>
         
         <!-- Backend Status Indicator -->
         {#if !backendHealthy}
-          <div class="w-full rounded-lg bg-flight-danger/20 border border-flight-danger/40 p-3 text-center">
+          <div class="w-full rounded-lg bg-flight-danger/20 border border-flight-danger/40 p-2 text-center mt-0">
             <p class="text-white text-sm">
               ⚠️ Backend service appears to be unavailable. Results may not load correctly.
             </p>
           </div>
         {/if}
         
-        <!-- Simplified Search Button -->
-        <div class="flex justify-center mt-2">
+        <!-- Search Button -->
+        <div class="flex justify-center mt-1">
           <button
             on:click={handleSearch}
             disabled={isLoading || origin.length !== 3 || destination.length !== 3}
-            class="bg-gradient-to-r from-flight-primary to-sky-accent hover:from-sky-accent hover:to-flight-primary text-white font-bold py-3 px-8 rounded-lg
+            class="bg-gradient-to-r from-flight-primary to-sky-accent hover:from-sky-accent hover:to-flight-primary text-white font-bold py-2.5 px-8 rounded-lg
                    transition-all duration-300 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed
                    flex items-center gap-2 shadow-lg"
           >
