@@ -1,9 +1,84 @@
-## Route-Based Best Airlines
+# Airline Route Ranker
 
-In this project, we explore the idea of route-based best airlines.
+![Flight Reliability Rankings](./frontend/static/plane-takeoff.svg)
 
-## Motivation
+A modern web application that helps travelers make informed decisions by providing route-specific flight reliability rankings.
 
-Research and my personal experience strongly indicates that airlines do offer different levels of service depending on the route. This is evident in the varying availability and features of cabin classes, with long-haul international flights typically offering a wider range of premium options like lie-flat seats and enhanced dining compared to shorter domestic routes, which might focus on basic economy and a domestic first class. Amenities within the same class can also differ; for instance, premium economy on international flights often includes better food and baggage allowances, unlike its domestic counterpart which mainly offers more legroom. Airlines strategically tailor these offerings based on the anticipated demand and profitability of a route, investing more in premium services on routes where passengers are willing to pay more for comfort and convenience.
+## 📊 Key Features
 
-Several operational and strategic factors contribute to this route-based service variation. Flight frequency and the type of aircraft deployed are adjusted based on demand, distance, and airport capabilities. Routes with high demand, especially from business travelers, often see higher frequencies, while longer distances necessitate larger aircraft. The level of competition on a route also influences service quality, with more competitive routes potentially leading to better on-time performance. Furthermore, airlines utilize tools like the Quality of Service Index (QSI) during route planning to assess passenger preferences for factors like schedules and aircraft type, which ultimately informs the service levels offered to maximize competitiveness and profitability in each specific market.
+- **Route-Specific Analysis**: Find the most reliable airlines for your specific route
+- **Reliability Scores**: Compare flights based on comprehensive reliability metrics
+- **Daily Updates**: Data refreshed regularly to provide current information
+- **User-Friendly Interface**: Clean, intuitive design for quick route comparisons
+
+## 🔍 Why Route-Based Rankings?
+
+Research shows airlines offer significantly different levels of service depending on the route. Variations exist in:
+
+- **Aircraft Types**: Routes may use different planes with varying amenities
+- **Cabin Services**: Premium features often differ between long-haul and domestic routes
+- **Reliability Factors**: On-time performance and cancellation rates vary by route
+- **Competition Levels**: Routes with more competition often have better service quality
+
+This application focuses on route-specific data rather than general airline ratings, giving you the information that matters for your particular journey.
+
+## 🛠️ Tech Stack
+
+- **Frontend**: SvelteKit with Tailwind CSS
+- **Backend**: FastAPI (Python)
+- **Data Sources**: Integration with multiple flight data APIs
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js (v16+)
+- Python 3.8+
+- npm or yarn
+
+### Frontend Setup
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+Frontend will be available at http://localhost:5173
+
+### Backend Setup
+```bash
+# Navigate to backend directory
+cd backend
+
+# Install dependencies
+pip install -r requrirements.txt
+
+# Start the backend server
+uvicorn app.main:app --reload
+```
+API will be available at http://localhost:8000
+
+## 📈 API Data Sources
+
+The application integrates with multiple flight data providers:
+
+- [AeroDataBox](https://rapidapi.com/aedbx-aedbx/api/aerodatabox)
+- [GoFlightLabs](https://www.goflightlabs.com/flights-schedules)
+- [Amadeus](https://developers.amadeus.com/)
+- [Duffel](https://duffel.com/docs)
+- [Kiwi.com API](https://tequila.kiwi.com/)
+
+## 📷 Screenshots
+
+*Coming soon*
+
+## 📝 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
