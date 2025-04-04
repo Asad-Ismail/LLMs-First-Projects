@@ -128,6 +128,8 @@ def get_flight_numbers_for_route(origin, destination, date=None, max_routes=5, m
         print("Warning: API credentials not set correctly. Please check environment variables.")
         return {"error": "API credentials not configured"}
     
+    # Visual indicator for API call start
+    print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 MAKING API CALL FOR AMADEUS AUTHENTICATION 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
     print(f"Requesting Amadeus Authentication Token...")
     auth_url = "https://test.api.amadeus.com/v1/security/oauth2/token"
     auth_data = {
@@ -142,7 +144,11 @@ def get_flight_numbers_for_route(origin, destination, date=None, max_routes=5, m
         auth_response.raise_for_status()
         access_token = auth_response.json().get("access_token")
         print("Authentication Successful.")
+        # Visual indicator for API call end
+        print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 COMPLETED API CALL FOR AMADEUS AUTHENTICATION 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
     except requests.exceptions.RequestException as e:
+        # Visual indicator for API call end with error
+        print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 API CALL FAILED FOR AMADEUS AUTHENTICATION 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
         print(f"Error during authentication: {e}")
         if hasattr(e, 'response') and e.response is not None:
             try:
@@ -151,6 +157,8 @@ def get_flight_numbers_for_route(origin, destination, date=None, max_routes=5, m
                 print(f"Response body (non-JSON): {e.response.text}")
         return {"error": f"Authentication failed: {str(e)}"}
     except json.JSONDecodeError:
+        # Visual indicator for API call end with error
+        print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 API CALL FAILED FOR AMADEUS AUTHENTICATION 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
         print("Error decoding authentication response.")
         return {"error": "Authentication response decode error"}
     
@@ -189,6 +197,8 @@ def get_flight_numbers_for_route(origin, destination, date=None, max_routes=5, m
         }
     }
     
+    # Visual indicator for API call start
+    print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 MAKING API CALL FOR FLIGHT SEARCH: {origin} → {destination} ({target_date}) 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
     print(f"Requesting Flight Offers for {target_date} from {origin} to {destination}...")
     url = "https://test.api.amadeus.com/v2/shopping/flight-offers"
     data = None
@@ -197,7 +207,11 @@ def get_flight_numbers_for_route(origin, destination, date=None, max_routes=5, m
         response.raise_for_status()
         data = response.json()
         print("Flight Offers Received.")
+        # Visual indicator for API call end
+        print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 COMPLETED API CALL FOR FLIGHT SEARCH: {origin} → {destination} 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
     except requests.exceptions.RequestException as e:
+        # Visual indicator for API call end with error
+        print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 API CALL FAILED FOR FLIGHT SEARCH: {origin} → {destination} 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
         print(f"Error during flight offers search: {e}")
         if hasattr(e, 'response') and e.response is not None:
             try:
@@ -206,6 +220,8 @@ def get_flight_numbers_for_route(origin, destination, date=None, max_routes=5, m
                 print(f"Response body (non-JSON): {e.response.text}")
         return {"error": f"Flight search failed: {str(e)}"}
     except json.JSONDecodeError:
+        # Visual indicator for API call end with error
+        print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 API CALL FAILED FOR FLIGHT SEARCH: {origin} → {destination} 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
         print("Error decoding flight offers response.")
         return {"error": "Flight offers response decode error"}
     

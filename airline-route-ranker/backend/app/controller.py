@@ -29,6 +29,8 @@ class FlightAnalysisSystem:
         # Fetch data
         print(f"Historical data for {flight_number}:")
         historical_data = self.reliability_api.get_historical_delay_stats(flight_number, use_cache=use_cache)
+        # Show historical flight count if data exists
+        FlightDataProcessor.show_historical_flight_count(historical_data)
         
         print(f"Recent data for {flight_number}:")
         recent_data = self.reliability_api.get_recent_flights(flight_number, use_cache=use_cache)
@@ -65,6 +67,8 @@ class FlightAnalysisSystem:
             # Get historical data
             print(f"Historical data for {flight_number}:")
             historical_data = self.reliability_api.get_historical_delay_stats(flight_number, use_cache=use_cache)
+            # Show historical flight count if data exists
+            FlightDataProcessor.show_historical_flight_count(historical_data)
             
             # Get recent data
             print(f"Recent data for {flight_number}:")
@@ -210,8 +214,8 @@ class FlightAnalysisSystem:
                 reliability_score = reliability  # Already on 0-100 scale
                 
                 # Calculate weighted smart rank (adjust weights as needed)
-                # 40% reliability, 35% price, 25% duration
-                smart_rank = (reliability_score * 0.40) + (price_score * 0.35) + (duration_score * 0.25)
+                # 35% reliability, 30% price, 35% duration
+                smart_rank = (reliability_score * 0.35) + (price_score * 0.30) + (duration_score * 0.35)
                 route["smart_rank"] = round(smart_rank, 1)
         
         # Sort routes by smart rank (highest first)

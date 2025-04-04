@@ -47,21 +47,21 @@
           
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div class="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
-              <h3 class="font-bold text-indigo-700 mb-2">Reliability (40%)</h3>
+              <h3 class="font-bold text-indigo-700 mb-2">Reliability (35%)</h3>
               <p class="text-gray-600 text-sm">
                 Based on historical and recent flight performance data, including delays, cancellations, and other reliability metrics.
               </p>
             </div>
             
             <div class="bg-blue-50 rounded-lg p-4 border border-blue-100">
-              <h3 class="font-bold text-blue-700 mb-2">Price (35%)</h3>
+              <h3 class="font-bold text-blue-700 mb-2">Price (30%)</h3>
               <p class="text-gray-600 text-sm">
                 The cost of the flight, normalized against other options on the same route to provide fair comparison.
               </p>
             </div>
             
             <div class="bg-teal-50 rounded-lg p-4 border border-teal-100">
-              <h3 class="font-bold text-teal-700 mb-2">Duration (25%)</h3>
+              <h3 class="font-bold text-teal-700 mb-2">Duration (35%)</h3>
               <p class="text-gray-600 text-sm">
                 Total travel time including connections, normalized against other options for the same route.
               </p>
@@ -74,12 +74,12 @@
               Each factor is normalized on a scale of 0-100 and combined with the appropriate weights:
             </p>
             <div class="bg-white rounded p-3 border border-gray-300 font-mono text-sm">
-              Smart Rank = (Reliability Score × 0.4) + (Price Score × 0.35) + (Duration Score × 0.25)
+              Smart Rank = (Reliability Score × 0.35) + (Price Score × 0.30) + (Duration Score × 0.35)
             </div>
           </div>
           
           <p class="text-gray-600 text-sm">
-            The resulting Smart Rank score provides a balanced evaluation that prioritizes reliability while also considering price and travel time. A higher score indicates a better overall flight option.
+            The resulting Smart Rank score provides a balanced evaluation that equally emphasizes reliability and duration while also considering price. A higher score indicates a better overall flight option.
           </p>
         </div>
         

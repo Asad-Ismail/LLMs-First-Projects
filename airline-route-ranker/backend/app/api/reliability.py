@@ -42,13 +42,32 @@ class FlightDataAPI:
             if cached_result:
                 return cached_result
         
+        # Visual indicator for API call start
+        print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 MAKING API CALL FOR HISTORICAL DATA: {flight_number} 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
+        
         url = f"{self.base_url}/flights/{flight_number}/delays"
         try:
             response = requests.get(url, headers=self.headers, timeout=15)
             
+            # Visual indicator for API call end
+            print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 COMPLETED API CALL FOR HISTORICAL DATA: {flight_number} 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
+            
             # Handle 204 No Content specifically
             if response.status_code == 204:
                 print(f"  ⚠️ No historical data available for {flight_number} (API returned 204 No Content)")
+                # Create a special empty cache object to prevent future API calls
+                empty_result = {
+                    "empty": True,
+                    "flight_number": flight_number,
+                    "cached_at": time.time(),
+                    "reason": "204_No_Content",
+                    "message": "No historical data available for this flight"
+                }
+                # Cache this empty result to prevent repeated API calls
+                if use_cache:
+                    cache_days = FLIGHT_CACHE_EXPIRY // (24 * 60 * 60)  # Convert seconds to days
+                    print(f"  ⓘ Caching empty historical data result for {flight_number} for {cache_days} days")
+                    save_to_cache(cache_file, empty_result)
                 return None
             
             response.raise_for_status()
@@ -59,13 +78,62 @@ class FlightDataAPI:
                 save_to_cache(cache_file, result)
             return result
         except requests.exceptions.HTTPError as http_err:
+            # Visual indicator for API call end with error
+            print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 API CALL FAILED FOR HISTORICAL DATA: {flight_number} 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
             print(f"  ⚠️ HTTP error fetching historical data for {flight_number}: {http_err}")
+            
+            # Cache the failure to prevent repeated API calls
+            if use_cache:
+                error_result = {
+                    "empty": True,
+                    "flight_number": flight_number,
+                    "cached_at": time.time(),
+                    "reason": "http_error",
+                    "error": str(http_err),
+                    "message": "HTTP error occurred when fetching historical data"
+                }
+                print(f"  ⓘ Caching HTTP error for {flight_number} to prevent repeated API calls")
+                save_to_cache(cache_file, error_result)
+                
             return None
+            
         except json.JSONDecodeError:
+            # Visual indicator for API call end with error
+            print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 API CALL FAILED FOR HISTORICAL DATA: {flight_number} 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
             print(f"  ⚠️ Could not parse API response for {flight_number} (empty or invalid JSON)")
+            
+            # Cache the failure to prevent repeated API calls
+            if use_cache:
+                error_result = {
+                    "empty": True,
+                    "flight_number": flight_number,
+                    "cached_at": time.time(),
+                    "reason": "json_decode_error",
+                    "message": "Could not parse API response (empty or invalid JSON)"
+                }
+                print(f"  ⓘ Caching JSON error for {flight_number} to prevent repeated API calls")
+                save_to_cache(cache_file, error_result)
+                
             return None
+            
         except Exception as e:
+            # Visual indicator for API call end with error
+            print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 API CALL FAILED FOR HISTORICAL DATA: {flight_number} 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
             print(f"  ⚠️ Error fetching historical data for {flight_number}: {e}")
+            
+            # Cache the failure to prevent repeated API calls
+            if use_cache:
+                error_result = {
+                    "empty": True,
+                    "flight_number": flight_number,
+                    "cached_at": time.time(),
+                    "reason": "general_error",
+                    "error": str(e),
+                    "message": "General error occurred when fetching historical data"
+                }
+                print(f"  ⓘ Caching error for {flight_number} to prevent repeated API calls")
+                save_to_cache(cache_file, error_result)
+                
             return None
     
     def get_recent_flights(self, flight_number, days_back=7, use_cache=True):
@@ -157,9 +225,15 @@ class FlightDataAPI:
                 save_to_cache(cache_file, empty_result)
             return empty_result
         
+        # Visual indicator for API call start
+        print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 MAKING API CALL FOR RECENT FLIGHTS: {flight_number} ({start_str} to {end_str}) 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
+        
         # Try just once - if rate limited, remember it and don't retry
         try:
             response = requests.get(url, headers=self.headers, timeout=15)
+            
+            # Visual indicator for API call end
+            print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 COMPLETED API CALL FOR RECENT FLIGHTS: {flight_number} 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
             
             # Handle 204 No Content specifically
             if response.status_code == 204:
@@ -220,6 +294,9 @@ class FlightDataAPI:
             return data
             
         except requests.exceptions.HTTPError as http_err:
+            # Visual indicator for API call end with error
+            print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 API CALL FAILED FOR RECENT FLIGHTS: {flight_number} 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
+            
             if "429" in str(http_err):
                 # Handle rate limiting exception - set flag to prevent future calls
                 print(f"  ⚠️ Rate limit error for {flight_number}, will not retry")
@@ -247,6 +324,9 @@ class FlightDataAPI:
             return None
             
         except json.JSONDecodeError:
+            # Visual indicator for API call end with error
+            print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 API CALL FAILED FOR RECENT FLIGHTS: {flight_number} 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
+            
             print(f"  ⚠️ Could not parse API response for {flight_number} (empty or invalid JSON)")
             
             # If we have expired cache data, use it as a fallback
@@ -257,6 +337,9 @@ class FlightDataAPI:
             return None
             
         except Exception as e:
+            # Visual indicator for API call end with error
+            print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 API CALL FAILED FOR RECENT FLIGHTS: {flight_number} 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
+            
             print(f"  ⚠️ Error fetching recent data for {flight_number}: {e}")
             
             # If we have expired cache data, use it as a fallback on any error

@@ -14,6 +14,23 @@ class FlightDataProcessor:
     """Process raw API responses into structured data."""
     
     @staticmethod
+    def show_historical_flight_count(flight_data):
+        """Display the number of flights analyzed in the historical data."""
+        if not flight_data:
+            return
+            
+        # Check if this is a cached empty result
+        if isinstance(flight_data, dict) and flight_data.get('empty') == True:
+            return
+            
+        # Extract and sum up flights from all origins and destinations
+        total_origin_flights = sum(origin.get('numConsideredFlights', 0) for origin in flight_data.get('origins', []))
+        total_dest_flights = sum(dest.get('numConsideredFlights', 0) for dest in flight_data.get('destinations', []))
+        
+        total_flights = total_origin_flights + total_dest_flights
+        print(f"  Historical flight count: {total_flights}")
+    
+    @staticmethod
     def process_historical_delay_stats(flight_data):
         """
         Process historical delay statistics from API response,
@@ -22,6 +39,13 @@ class FlightDataProcessor:
         if not flight_data:
             return None
             
+        # Check if this is a cached empty result with metadata
+        if isinstance(flight_data, dict) and flight_data.get('empty') == True:
+            reason = flight_data.get('reason', 'unknown')
+            message = flight_data.get('message', 'No historical data available')
+            print(f"  ⓘ Using cached empty result for historical data: {message} (reason: {reason})")
+            return None
+        
         # Extract flight number
         flight_number = flight_data.get('number')
         
@@ -574,6 +598,9 @@ class FlightDataAnalyzer:
         # Case 1: Only historical data is available (missing recent)
         if historical_data and (recent_data is None or recent_data == []):
             print("  ⚠️ Only historical data available (recent data missing or rate-limited)")
+            # Get historical flight count for logging
+            total_hist_flights = historical_data.get("overall", {}).get("total_flights_analyzed", 0)
+            print(f"  Historical flight count: {total_hist_flights}")
             return {
                 "data_quality": "missing_recent",
                 "overall": historical_data.get("overall", {}),
@@ -658,6 +685,9 @@ class FlightDataAnalyzer:
             # Normalize historical buckets by total flights
             total_hist_flights = historical_data.get("overall", {}).get("total_flights_analyzed", 0)
             
+            # Log historical flight count for information
+            print(f"  Historical flight count: {total_hist_flights}")
+            
         else:
             # Fall back to departure options
             print("  Using historical departure delay buckets")
@@ -669,7 +699,7 @@ class FlightDataAnalyzer:
             
             # Normalize historical buckets by total flights
             total_hist_flights = historical_data.get("overall", {}).get("total_flights_analyzed", 0)
-                
+        
         # Normalize historical buckets
         if total_hist_flights > 0:
             for key in hist_buckets:
