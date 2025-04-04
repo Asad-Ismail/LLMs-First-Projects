@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { submitContactForm } from '$lib/api';
+  import { submitContactForm } from '$lib/api.js';
   
   // Form data
   let name = '';
