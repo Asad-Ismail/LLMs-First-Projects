@@ -166,19 +166,32 @@ class FlightAnalysisSystem:
                     # Get delay percentage
                     if flight_data.get("data_quality") == "complete":
                         delay_pct = flight_data.get("combined_statistics", {}).get("overall_delay_percentage")
+                        # Get flight counts from data_sources
+                        historical_count = flight_data.get("data_sources", {}).get("historical", {}).get("total_flights", 0)
+                        recent_count = flight_data.get("data_sources", {}).get("recent", {}).get("total_flights", 0)
                     elif flight_data.get("data_quality") == "missing_historical":
                         delay_stats = flight_data.get("delay_statistics", {}).get("arrival") or flight_data.get("delay_statistics", {}).get("departure", {})
                         delay_pct = delay_stats.get("delayed_percentage")
+                        # For missing historical, get flights from total_flights
+                        historical_count = 0
+                        recent_count = flight_data.get("total_flights", 0)
                     elif flight_data.get("data_quality") == "missing_recent":
                         delay_pct = flight_data.get("overall", {}).get("overall_delayed_percentage")
+                        # For missing recent, get counts from overall
+                        historical_count = flight_data.get("overall", {}).get("total_flights_analyzed", 0)
+                        recent_count = 0
                     else:
                         delay_pct = None
+                        historical_count = 0
+                        recent_count = 0
                     
                     reliability_data.append({
                         "flight_number": flight_number,
                         "reliability_score": reliability_score,
                         "delay_percentage": delay_pct,
-                        "data_quality": flight_data.get("data_quality", "unknown")
+                        "data_quality": flight_data.get("data_quality", "unknown"),
+                        "historical_flight_count": historical_count,
+                        "recent_flight_count": recent_count
                     })
             
             # Calculate average reliability score for the route
