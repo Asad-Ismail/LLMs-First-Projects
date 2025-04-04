@@ -5,7 +5,7 @@
   import FlightCard from '$lib/components/FlightCard.svelte';
   import Loader from '$lib/components/Loader.svelte';
   import ErrorMessage from '$lib/components/ErrorMessage.svelte';
-  import { fetchRouteRankings, fetchHealthStatus, fetchAvailableDates, type RouteRankingResponse, type RouteData } from '$lib/api.js';
+  import { fetchRouteRankings, fetchHealthStatus, fetchAvailableDates, type RouteRankingResponse, type RouteData } from '$lib/api';
 
   // Prefill origin and destination with default values
   let origin = 'AMS';
