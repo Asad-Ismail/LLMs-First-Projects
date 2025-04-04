@@ -7,9 +7,15 @@
   import ErrorMessage from '$lib/components/ErrorMessage.svelte';
   import { fetchRouteRankings, fetchHealthStatus, type RouteRankingResponse, type RouteData } from '$lib/api';
 
-  let origin = '';
-  let destination = '';
-  let travelDate = '';
+  // Prefill origin and destination with default values
+  let origin = 'AMS';
+  let destination = 'LHE';
+  
+  // Calculate default date (28 days from today, matching backend logic)
+  const defaultDate = new Date();
+  defaultDate.setDate(defaultDate.getDate() + 28);
+  let travelDate = defaultDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+  
   let routeData: RouteRankingResponse | null = null;
   let isLoading = false;
   let error: string | null = null;
@@ -40,6 +46,9 @@
       
       routeData = result;
       
+      // Debug log to check number of routes received
+      console.log(`Received ${result.routes?.length || 0} routes from backend`);
+      
       // Check if we received routes
       if (!routeData.routes || routeData.routes.length === 0) {
         error = `No flight data found for the route ${searchedRoute}. Check airports or try later.`;
@@ -61,6 +70,10 @@
       
       if (!backendHealthy) {
         console.warn("Backend system not fully initialized (API key issue?).");
+      } else {
+        // Auto-search with default values when page loads
+        searchedRoute = `${origin.toUpperCase()} → ${destination.toUpperCase()}`;
+        handleSearch();
       }
     } catch (e) {
       console.warn("Could not reach backend for health check.");
@@ -162,10 +175,11 @@
             <AirportInput 
               label="From"
               bind:value={origin}
-              placeholder="Airport Code (e.g., LHR)"
+              placeholder="Airport Code (e.g., AMS)"
               icon="/plane-takeoff.svg"
               classes="shadow-md focus:shadow-[0_0_10px_rgba(56,189,248,0.5)] transition-shadow"
             />
+            <div class="text-[10px] text-white/70 text-center mt-1">Amsterdam Airport Schiphol</div>
           </div>
           
           <!-- Simple Arrow with Perfect Alignment -->
@@ -180,10 +194,11 @@
             <AirportInput 
               label="To"
               bind:value={destination}
-              placeholder="Airport Code (e.g., JFK)"
+              placeholder="Airport Code (e.g., LHE)"
               icon="/plane-landing.svg"
               classes="shadow-md focus:shadow-[0_0_10px_rgba(56,189,248,0.5)] transition-shadow"
             />
+            <div class="text-[10px] text-white/70 text-center mt-1">Lahore Allama Iqbal International</div>
           </div>
         </div>
 
@@ -274,6 +289,10 @@
         {#if routeData && routeData.routes && routeData.routes.length > 0}
           <div class="mb-4 text-xs text-white/70">
             <span class="font-medium">Showing top {routeData.routes.length} results</span>
+          </div>
+          <!-- Debug information -->
+          <div class="mb-4 text-xs text-white/70">
+            <span class="font-medium">Debug - Routes in data: {routeData.routes.length}</span>
           </div>
         {/if}
         
