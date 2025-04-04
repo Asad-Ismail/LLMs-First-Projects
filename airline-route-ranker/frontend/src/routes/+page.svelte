@@ -224,8 +224,11 @@
   let selectedCachedDate: string | null = null;
   let lastCheckedRoute = ""; // Track the last checked route
 
-  // Set up watchers for airport code changes to fetch available dates
-  $: if (origin?.length === 3 && destination?.length === 3) {
+  // Modify the reactive statement to only run in the browser
+  let isMounted = false;
+  
+  // Move reactive statement inside onMount
+  $: if (isMounted && origin?.length === 3 && destination?.length === 3) {
     const routeKey = `${origin}-${destination}`;
     // Only check if this is a different route than we last checked
     if (routeKey !== lastCheckedRoute) {
@@ -311,14 +314,24 @@
     }
   }
 
-  // Check backend health on load
+  // Check backend health on load and initialize reactive dependencies
   onMount(async () => {
+    // Set mounted flag to true
+    isMounted = true;
+    
     try {
       const healthData = await fetchHealthStatus();
       backendHealthy = healthData.status === 'ok' && healthData.system_initialized;
       
       if (!backendHealthy) {
         console.warn("Backend system not fully initialized (API key issue?).");
+      }
+      
+      // If we already have valid airport codes, check for dates
+      if (origin?.length === 3 && destination?.length === 3) {
+        const routeKey = `${origin}-${destination}`;
+        lastCheckedRoute = routeKey;
+        checkAvailableDates(origin, destination);
       }
     } catch (e) {
       console.warn("Could not reach backend for health check.");
