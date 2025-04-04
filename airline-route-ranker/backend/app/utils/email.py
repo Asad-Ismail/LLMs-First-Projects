@@ -58,6 +58,7 @@ def send_contact_email(name: str, email: str, subject: str, message: str) -> boo
         logger.info(f"Email will be sent from {SMTP_USERNAME} to {ADMIN_EMAIL}")
         
         # Create HTML body with formatted contact information
+        formatted_message = message.replace('\n', '<br>')
         html_message = f"""
         <html>
         <body>
@@ -65,7 +66,7 @@ def send_contact_email(name: str, email: str, subject: str, message: str) -> boo
             <p><strong>From:</strong> {name} ({email})</p>
             <p><strong>Subject:</strong> {subject}</p>
             <div style="margin-top: 20px; padding: 10px; border-left: 4px solid #ccc;">
-                {message.replace('\n', '<br>')}
+                {formatted_message}
             </div>
         </body>
         </html>

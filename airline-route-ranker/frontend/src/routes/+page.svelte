@@ -5,7 +5,7 @@
   import FlightCard from '$lib/components/FlightCard.svelte';
   import Loader from '$lib/components/Loader.svelte';
   import ErrorMessage from '$lib/components/ErrorMessage.svelte';
-  import { fetchRouteRankings, fetchHealthStatus, type RouteRankingResponse, type RouteData } from '$lib/api';
+  import { fetchRouteRankings, fetchHealthStatus, fetchAvailableDates, type RouteRankingResponse, type RouteData } from '$lib/api';
 
   // Prefill origin and destination with default values
   let origin = 'AMS';
@@ -16,11 +16,260 @@
   defaultDate.setDate(defaultDate.getDate() + 28);
   let travelDate = defaultDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
   
+  // Airport name variables
+  let originAirportName = "Amsterdam Airport Schiphol";
+  let destinationAirportName = "Lahore Allama Iqbal International";
+  
+  // Common airport lookup (add more as needed)
+  const airportNames: Record<string, string> = {
+    // Major International Hubs
+    'AMS': 'Amsterdam Airport Schiphol',
+    'LHR': 'London Heathrow',
+    'CDG': 'Paris Charles de Gaulle',
+    'FRA': 'Frankfurt Airport',
+    'JFK': 'New York John F. Kennedy',
+    'LAX': 'Los Angeles International',
+    'ORD': 'Chicago O\'Hare International',
+    'ATL': 'Atlanta Hartsfield-Jackson',
+    'DXB': 'Dubai International',
+    'HKG': 'Hong Kong International',
+    'SIN': 'Singapore Changi',
+    'ICN': 'Seoul Incheon International',
+    'PEK': 'Beijing Capital International',
+    'PVG': 'Shanghai Pudong International',
+    'NRT': 'Tokyo Narita International',
+    'HND': 'Tokyo Haneda International',
+    'SYD': 'Sydney Kingsford Smith',
+    'MEL': 'Melbourne Airport',
+    'IST': 'Istanbul Airport',
+    'MUC': 'Munich Airport',
+    'BCN': 'Barcelona El Prat',
+    'MAD': 'Madrid Barajas',
+    'FCO': 'Rome Fiumicino',
+    'LGW': 'London Gatwick',
+    'MXP': 'Milan Malpensa',
+    'BRU': 'Brussels Airport',
+    'VIE': 'Vienna International',
+    'ZRH': 'Zurich Airport',
+    'CPH': 'Copenhagen Airport',
+    'ARN': 'Stockholm Arlanda',
+    'OSL': 'Oslo Gardermoen',
+    'HEL': 'Helsinki Vantaa',
+    
+    // Middle East & Africa
+    'LHE': 'Lahore Allama Iqbal International',
+    'KHI': 'Karachi Jinnah International',
+    'ISB': 'Islamabad International',
+    'DEL': 'Delhi Indira Gandhi International',
+    'BOM': 'Mumbai Chhatrapati Shivaji',
+    'MAA': 'Chennai International',
+    'BLR': 'Bengaluru Kempegowda International',
+    'CCU': 'Kolkata Netaji Subhas Chandra Bose',
+    'HYD': 'Hyderabad Rajiv Gandhi International',
+    'DOH': 'Doha Hamad International',
+    'AUH': 'Abu Dhabi International',
+    'RUH': 'Riyadh King Khalid International',
+    'JED': 'Jeddah King Abdulaziz International',
+    'CAI': 'Cairo International',
+    'JNB': 'Johannesburg O.R. Tambo',
+    'CPT': 'Cape Town International',
+    'NBO': 'Nairobi Jomo Kenyatta',
+    'ADD': 'Addis Ababa Bole International',
+    'LOS': 'Lagos Murtala Muhammed',
+    
+    // Asia Pacific
+    'BKK': 'Bangkok Suvarnabhumi',
+    'DMK': 'Bangkok Don Mueang',
+    'KUL': 'Kuala Lumpur International',
+    'CGK': 'Jakarta Soekarno-Hatta',
+    'MNL': 'Manila Ninoy Aquino International',
+    'SGN': 'Ho Chi Minh City Tan Son Nhat',
+    'HAN': 'Hanoi Noi Bai International',
+    'TPE': 'Taipei Taiwan Taoyuan',
+    'CAN': 'Guangzhou Baiyun International',
+    'CTU': 'Chengdu Shuangliu International',
+    'XIY': 'Xi\'an Xianyang International',
+    'PNH': 'Phnom Penh International',
+    'REP': 'Siem Reap International',
+    'HKT': 'Phuket International',
+    'DPS': 'Bali Ngurah Rai International',
+    'AKL': 'Auckland Airport',
+    'CHC': 'Christchurch International',
+    'WLG': 'Wellington International',
+    'BNE': 'Brisbane International',
+    'PER': 'Perth Airport',
+    'ADL': 'Adelaide Airport',
+    
+    // North America
+    'YYZ': 'Toronto Pearson International',
+    'YVR': 'Vancouver International',
+    'YUL': 'Montreal Trudeau International',
+    'YYC': 'Calgary International',
+    'SFO': 'San Francisco International',
+    'DFW': 'Dallas/Fort Worth International',
+    'MIA': 'Miami International',
+    'SEA': 'Seattle-Tacoma International',
+    'BOS': 'Boston Logan International',
+    'IAD': 'Washington Dulles International',
+    'DCA': 'Washington Reagan National',
+    'EWR': 'Newark Liberty International',
+    'IAH': 'Houston George Bush Intercontinental',
+    'PHX': 'Phoenix Sky Harbor International',
+    'MSP': 'Minneapolis−Saint Paul International',
+    'DTW': 'Detroit Metropolitan Wayne County',
+    'PHL': 'Philadelphia International',
+    'CLT': 'Charlotte Douglas International',
+    'LAS': 'Las Vegas Harry Reid International',
+    'DEN': 'Denver International',
+    'SAN': 'San Diego International',
+    'TPA': 'Tampa International',
+    'MCO': 'Orlando International',
+    'PDX': 'Portland International',
+    'MEX': 'Mexico City International',
+    'CUN': 'Cancún International',
+    'GDL': 'Guadalajara International',
+    
+    // Latin America & Caribbean
+    'GRU': 'São Paulo Guarulhos International',
+    'EZE': 'Buenos Aires Ezeiza International',
+    'SCL': 'Santiago International',
+    'BOG': 'Bogotá El Dorado International',
+    'LIM': 'Lima Jorge Chávez International',
+    'PTY': 'Panama City Tocumen International',
+    'MDE': 'Medellín José María Córdova',
+    'UIO': 'Quito Mariscal Sucre International',
+    'MVD': 'Montevideo Carrasco International',
+    'CCS': 'Caracas Simón Bolívar International',
+    'GIG': 'Rio de Janeiro Galeão International',
+    'BSB': 'Brasília International',
+    'CNF': 'Belo Horizonte Tancredo Neves',
+    'HAV': 'Havana José Martí International',
+    'SJU': 'San Juan Luis Muñoz Marín',
+    'SJO': 'San José Juan Santamaría',
+    'MBJ': 'Montego Bay Sangster International',
+    'PUJ': 'Punta Cana International',
+    'AUA': 'Aruba Queen Beatrix International',
+    'CUR': 'Curaçao International',
+    
+    // European Regional
+    'LIS': 'Lisbon Humberto Delgado',
+    'OPO': 'Porto Francisco Sá Carneiro',
+    'DUB': 'Dublin Airport',
+    'ATH': 'Athens Eleftherios Venizelos',
+    'SKG': 'Thessaloniki Macedonia',
+    'WAW': 'Warsaw Chopin',
+    'KRK': 'Kraków John Paul II',
+    'PRG': 'Prague Václav Havel',
+    'BUD': 'Budapest Ferenc Liszt',
+    'OTP': 'Bucharest Henri Coandă',
+    'SOF': 'Sofia Airport',
+    'KEF': 'Reykjavík Keflavík',
+    'RIX': 'Riga International',
+    'TLL': 'Tallinn Lennart Meri',
+    'VNO': 'Vilnius International',
+    'KBP': 'Kyiv Boryspil International',
+    'LED': 'St. Petersburg Pulkovo',
+    'SVO': 'Moscow Sheremetyevo',
+    'DME': 'Moscow Domodedovo',
+    'ZAG': 'Zagreb International',
+    'BEG': 'Belgrade Nikola Tesla',
+    'TXL': 'Berlin Tegel (historical)',
+    'BER': 'Berlin Brandenburg',
+    'HAM': 'Hamburg Airport',
+    'DUS': 'Düsseldorf Airport',
+    'STR': 'Stuttgart Airport',
+    'PMI': 'Palma de Mallorca',
+    'IBZ': 'Ibiza Airport',
+    'AGP': 'Málaga-Costa del Sol',
+    'NCE': 'Nice Côte d\'Azur',
+    'MRS': 'Marseille Provence',
+    'LYS': 'Lyon–Saint-Exupéry',
+    'TLS': 'Toulouse–Blagnac',
+    'EDI': 'Edinburgh Airport',
+    'GLA': 'Glasgow Airport',
+    'BHX': 'Birmingham Airport',
+    'MAN': 'Manchester Airport',
+    'BRS': 'Bristol Airport',
+    'LBA': 'Leeds Bradford',
+    'BFS': 'Belfast International',
+    'ORK': 'Cork Airport',
+    'SNN': 'Shannon Airport',
+    'NAP': 'Naples International',
+    'PSA': 'Pisa International',
+    'VCE': 'Venice Marco Polo',
+    'BLQ': 'Bologna Guglielmo Marconi',
+    'CTA': 'Catania-Fontanarossa',
+  };
+  
+  // Update airport names when codes change
+  $: if (origin) {
+    const upperOrigin = origin.toUpperCase();
+    originAirportName = airportNames[upperOrigin] || `Airport ${upperOrigin}`;
+  }
+  
+  $: if (destination) {
+    const upperDest = destination.toUpperCase();
+    destinationAirportName = airportNames[upperDest] || `Airport ${upperDest}`;
+  }
+  
   let routeData: RouteRankingResponse | null = null;
   let isLoading = false;
   let error: string | null = null;
   let searchedRoute = ''; // To display "Results for LHR -> JFK"
   let backendHealthy = true;
+  
+  // Variables for available dates
+  let availableDates: string[] = [];
+  let isCheckingDates = false;
+  let selectedCachedDate: string | null = null;
+  let lastCheckedRoute = ""; // Track the last checked route
+
+  // Set up watchers for airport code changes to fetch available dates
+  $: if (origin?.length === 3 && destination?.length === 3) {
+    const routeKey = `${origin}-${destination}`;
+    // Only check if this is a different route than we last checked
+    if (routeKey !== lastCheckedRoute) {
+      lastCheckedRoute = routeKey;
+      checkAvailableDates(origin, destination);
+    }
+  }
+  
+  // Function to check for available cached dates
+  async function checkAvailableDates(originCode: string, destCode: string) {
+    // Don't check if already checking
+    if (isCheckingDates) return;
+    
+    isCheckingDates = true;
+    try {
+      const dates = await fetchAvailableDates(originCode, destCode);
+      
+      // Filter to only future dates
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      availableDates = dates.filter(date => {
+        const dateObj = new Date(date);
+        return dateObj >= today;
+      }).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+      
+      if (availableDates.length > 0) {
+        // Select the most future date
+        selectedCachedDate = availableDates[availableDates.length - 1];
+        
+        // Update the travel date but don't automatically search
+        travelDate = selectedCachedDate;
+      } else {
+        // No available dates found
+        selectedCachedDate = null;
+      }
+    } catch (err) {
+      console.warn('Error checking available dates:', err);
+      selectedCachedDate = null;
+      availableDates = [];
+    } finally {
+      isCheckingDates = false;
+    }
+  }
 
   async function handleSearch() {
     // Basic validation before fetching
@@ -70,10 +319,6 @@
       
       if (!backendHealthy) {
         console.warn("Backend system not fully initialized (API key issue?).");
-      } else {
-        // Auto-search with default values when page loads
-        searchedRoute = `${origin.toUpperCase()} → ${destination.toUpperCase()}`;
-        handleSearch();
       }
     } catch (e) {
       console.warn("Could not reach backend for health check.");
@@ -101,11 +346,14 @@
         </h1>
       </div>
       
+      <!-- Navigation -->
       <nav class="hidden md:flex gap-6 justify-end flex-1">
         <div class="flex gap-2 bg-white/5 hover:bg-white/10 backdrop-blur-sm px-4 py-1.5 rounded-full transition-all duration-300 border border-white/10 shadow-sm hover:shadow-md">
           <a href="/about" class="text-white/90 hover:text-sky-accent transition-colors text-sm font-medium">About</a>
           <span class="text-sky-accent/50">|</span>
           <a href="/faq" class="text-white/90 hover:text-sky-accent transition-colors text-sm font-medium">FAQ</a>
+          <span class="text-sky-accent/50">|</span>
+          <a href="/contact" class="text-white/90 hover:text-sky-accent transition-colors text-sm font-medium">Contact</a>
         </div>
       </nav>
       
@@ -179,7 +427,7 @@
               icon="/plane-takeoff.svg"
               classes="shadow-md focus:shadow-[0_0_10px_rgba(56,189,248,0.5)] transition-shadow"
             />
-            <div class="text-[10px] text-white/70 text-center mt-1">Amsterdam Airport Schiphol</div>
+            <div class="text-[10px] text-white/70 text-center mt-1">{originAirportName}</div>
           </div>
           
           <!-- Simple Arrow with Perfect Alignment -->
@@ -198,12 +446,12 @@
               icon="/plane-landing.svg"
               classes="shadow-md focus:shadow-[0_0_10px_rgba(56,189,248,0.5)] transition-shadow"
             />
-            <div class="text-[10px] text-white/70 text-center mt-1">Lahore Allama Iqbal International</div>
+            <div class="text-[10px] text-white/70 text-center mt-1">{destinationAirportName}</div>
           </div>
         </div>
 
         <!-- Integrated Date Input (More Compact) -->
-        <div class="flex justify-center -mt-3">
+        <div class="flex flex-col items-center -mt-3">
           <div class="w-full max-w-[140px]">
             <div class="text-[10px] text-white/70 mb-0.5 text-center">Date (Optional)</div>
             <input
@@ -215,6 +463,48 @@
                     focus:outline-none focus:ring-1 focus:ring-sky-accent/50 shadow-sm [color-scheme:dark]"
             />
           </div>
+          
+          <!-- Date selection info - Enhanced to be more visible -->
+          {#if isCheckingDates}
+            <div class="text-xs text-white/90 mt-2 text-center px-2 py-1 bg-white/10 rounded-md backdrop-blur-sm">
+              <div class="animate-pulse">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Checking for cached routes...
+              </div>
+            </div>
+          {:else if selectedCachedDate}
+            <div class="text-xs text-white mt-2 text-center px-2 py-1 bg-sky-accent/20 border border-sky-accent/40 rounded-md">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1 text-sky-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              <span class="text-sky-accent">Cached date auto-selected:</span>
+              <span class="font-medium ml-1">
+                {new Date(selectedCachedDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}
+              </span>
+            </div>
+          {/if}
+          
+          <!-- Available dates dropdown - Enhanced -->
+          {#if availableDates.length > 1}
+            <div class="mt-2 text-xs text-white/80 text-center px-3 py-2 bg-white/10 rounded-md backdrop-blur-sm">
+              <div class="font-medium mb-1">Other cached dates available:</div>
+              <div class="flex flex-wrap justify-center gap-1 max-w-[300px]">
+                {#each availableDates.filter(d => d !== selectedCachedDate) as date}
+                  <button 
+                    class="bg-white/10 hover:bg-white/20 rounded px-2 py-0.5 text-[10px] backdrop-blur-sm transition-colors"
+                    on:click={() => {
+                      travelDate = date;
+                      selectedCachedDate = date;
+                    }}
+                  >
+                    {new Date(date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}
+                  </button>
+                {/each}
+              </div>
+            </div>
+          {/if}
         </div>
         
         <!-- Backend Status Indicator -->

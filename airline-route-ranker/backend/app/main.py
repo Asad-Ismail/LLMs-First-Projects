@@ -34,6 +34,8 @@ origins = [
     "http://localhost:3000",  # Common development port
     "http://127.0.0.1:3000",
     # Add production URLs here
+    "https://airline-route-ranker.onrender.com",  # Production frontend on Render
+    "https://*.onrender.com",  # Wildcard for any Render subdomain
 ]
 
 app.add_middleware(

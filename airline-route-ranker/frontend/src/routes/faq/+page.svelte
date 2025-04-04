@@ -26,6 +26,8 @@
           <a href="/about" class="text-white/90 hover:text-sky-accent transition-colors text-sm font-medium">About</a>
           <span class="text-sky-accent/50">|</span>
           <a href="/faq" class="text-sky-accent transition-colors text-sm font-medium">FAQ</a>
+          <span class="text-sky-accent/50">|</span>
+          <a href="/contact" class="text-white/90 hover:text-sky-accent transition-colors text-sm font-medium">Contact</a>
         </div>
       </nav>
     </div>
