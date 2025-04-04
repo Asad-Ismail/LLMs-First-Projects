@@ -214,17 +214,40 @@ class FlightDataProcessor:
     def process_recent_flight_data(flight_data, include_predictions=True):
         """
         Process recent flight data from API response.
+        
+        This method handles both direct API responses and cached data which
+        may have different structures.
         """
-        if not flight_data:
+        # Initial data validation
+        if flight_data is None or flight_data == []:
+            print("  ⚠️ No recent flight data to process (empty or None)")
             return None
+        
+        # Detect and handle possible cache structure formats
+        # Sometimes we get {'result': [...flights...], 'timestamp': 123456789}
+        if isinstance(flight_data, dict) and 'result' in flight_data and isinstance(flight_data['result'], list):
+            print(f"  Detected cached data structure with {len(flight_data['result'])} flights")
+            flight_data = flight_data['result']
+        
+        # Ensure we have a list of flight objects
+        if not isinstance(flight_data, list):
+            print(f"  ⚠️ Unexpected flight data format: {type(flight_data)}, expected list")
+            return None
+        
+        # Check if the list is empty
+        if len(flight_data) == 0:
+            print("  ⚠️ Flight data list is empty")
+            return None
+        
+        print(f"  Processing {len(flight_data)} recent flights")
             
         # Extract flight number from first record
-        flight_number = flight_data[0].get("number", "Unknown") if flight_data else "Unknown"
-        airline_name = flight_data[0].get("airline", {}).get("name", "Unknown") if flight_data else "Unknown"
+        flight_number = flight_data[0].get("number", "Unknown") 
+        airline_name = flight_data[0].get("airline", {}).get("name", "Unknown") 
         
         # Extract route information
-        departure_airport = flight_data[0].get("departure", {}).get("airport", {}) if flight_data else {}
-        arrival_airport = flight_data[0].get("arrival", {}).get("airport", {}) if flight_data else {}
+        departure_airport = flight_data[0].get("departure", {}).get("airport", {})
+        arrival_airport = flight_data[0].get("arrival", {}).get("airport", {})
         route = f"{departure_airport.get('iata', '')} → {arrival_airport.get('iata', '')}"
         
         # Initialize result dictionary
@@ -306,9 +329,15 @@ class FlightDataProcessor:
                 
             except Exception as e:
                 # Skip flights with parsing errors
-                print(f"Error processing flight: {e}")
+                print(f"  ⚠️ Error processing flight: {e}")
                 continue
         
+        # Verify we have processed data
+        if not result["individual_flights"]:
+            print(f"  ⚠️ Failed to process any flights from the data")
+        else:
+            print(f"  Successfully processed {len(result['individual_flights'])} flights")
+            
         # Calculate date range
         if dates:
             min_date = min(dates).strftime("%Y-%m-%d")
@@ -520,42 +549,59 @@ class FlightDataAnalyzer:
     @staticmethod
     def combine_statistics(historical_data, recent_data):
         """
-        Combine historical and recent statistics using weighted average.
+        Combine historical and recent flight data into a unified format.
         
         Args:
-            historical_data: Processed historical data
-            recent_data: Processed recent data
+            historical_data: Processed historical statistics
+            recent_data: Processed recent flight data
             
         Returns:
-            dict: Combined statistics with data_quality indicator
+            dict: Combined flight data with data quality indicator
         """
-        # Determine data completeness
-        data_quality = "complete"
+        # Handle cases where both are None or empty
+        if (historical_data is None or historical_data == []) and (recent_data is None or recent_data == []):
+            print("  ⚠️ Both historical and recent data are missing or empty, using default reliability")
+            return {
+                "data_quality": "insufficient_data",
+                "message": "No reliable data available for this flight"
+            }
         
-        if not historical_data and not recent_data:
-            return None
-            
-        if not historical_data:
-            data_quality = "missing_historical"
-            return_data = recent_data
-        elif not recent_data:
-            data_quality = "missing_recent"
-            return_data = historical_data
-        else:
-            return_data = None  # Will be set later in this function
+        # Handle the case where recent_data is an empty list (cached empty result)
+        if recent_data == []:
+            print("  ⚠️ Recent data is an empty cached list (likely from rate limiting)")
+            recent_data = None
         
-        # If we already decided to return a single data source due to missing data
-        if return_data:
-            # Add data quality flag
-            return_data["data_quality"] = data_quality
-            return return_data
+        # Case 1: Only historical data is available (missing recent)
+        if historical_data and (recent_data is None or recent_data == []):
+            print("  ⚠️ Only historical data available (recent data missing or rate-limited)")
+            return {
+                "data_quality": "missing_recent",
+                "overall": historical_data.get("overall", {}),
+                "departure_options": historical_data.get("departure_options", []),
+                "arrival_options": historical_data.get("arrival_options", [])
+            }
+        
+        # Case 2: Only recent data is available (missing historical)
+        if (historical_data is None or historical_data == []) and recent_data:
+            # No historical data
+            print("  ⚠️ No historical data available, using only recent statistics")
+            # Capture total flights count from recent data for logging
+            total_recent_flights = len(recent_data.get("individual_flights", []))
+            print(f"  Recent flight count: {total_recent_flights}")
             
+            return {
+                "data_quality": "missing_historical",
+                "delay_statistics": recent_data.get("delay_statistics", {}),
+                "individual_flights": recent_data.get("individual_flights", []),
+                "total_flights": recent_data.get("total_flights", 0)
+            }
+        
         # Create a new results dictionary for the case where we have both data sources
         combined = {
             "flight_number": historical_data.get("flight_number") or recent_data.get("flight_number"),
             "airline": recent_data.get("airline", "Unknown"),
             "route": recent_data.get("route", "Unknown"),
-            "data_quality": data_quality,  # Add data quality flag
+            "data_quality": "complete",  # Add data quality flag
             "data_sources": {
                 "historical": {
                     "total_flights": historical_data.get("overall", {}).get("total_flights_analyzed", 0),
@@ -676,6 +722,11 @@ class FlightDataAnalyzer:
         # Check data quality
         data_quality = combined_data.get("data_quality", "unknown")
         
+        # Handle case where we have insufficient data
+        if data_quality == "insufficient_data":
+            print("  ⚠️ Insufficient data for reliable scoring, using neutral score")
+            return 50
+            
         # Handle different data quality scenarios
         if data_quality == "missing_historical":
             # For missing historical data, use recent data with a confidence penalty
@@ -684,7 +735,14 @@ class FlightDataAnalyzer:
             
             if "delay_statistics" in combined_data:
                 # Get number of flights to check data reliability
+                # Check both individual_flights list and total_flights field
                 num_flights = len(combined_data.get("individual_flights", []))
+                # If individual_flights count is 0 but total_flights field has a value, use that instead
+                if num_flights == 0:
+                    num_flights = combined_data.get("total_flights", 0)
+                
+                print(f"  Flight count used for reliability calculation: {num_flights}")
+                
                 if num_flights < 3:
                     print(f"  ⚠️ Very limited data sample: Only {num_flights} recent flights")
                     # For very limited data, use a minimum baseline score

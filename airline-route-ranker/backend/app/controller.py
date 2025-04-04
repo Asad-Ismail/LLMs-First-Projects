@@ -151,6 +151,11 @@ class FlightAnalysisSystem:
             for flight_number in route.get("operating_flight_numbers", []):
                 if flight_number in reliability_results:
                     flight_data = reliability_results[flight_number]
+                    
+                    # Skip if flight_data is None (could happen with API rate limiting)
+                    if flight_data is None:
+                        continue
+                        
                     reliability_score = FlightDataAnalyzer.calculate_reliability_score(flight_data)
                     flight_scores.append(reliability_score)
                     
