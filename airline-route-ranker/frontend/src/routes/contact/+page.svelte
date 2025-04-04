@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { submitContactForm } from '$lib/api.ts';
+  import { submitContactForm } from '$lib/api';
   
   // Form data
   let name = '';
@@ -101,7 +101,7 @@
         </div>
       </nav>
       
-      <button class="md:hidden text-white flex-1 flex justify-end">
+      <button class="md:hidden text-white flex-1 flex justify-end" aria-label="Open navigation menu">
         <div class="bg-white/5 hover:bg-white/15 p-2 rounded-lg transition-all duration-300 border border-white/10 shadow-sm hover:shadow-md">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
