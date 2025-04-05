@@ -3,8 +3,15 @@
  */
 
 // The backend API URL (use environment variables for production)
-export const API_BASE_URL = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:8000';
-console.log('API_BASE_URL:', API_BASE_URL);
+// First try window.API_BASE_URL_OVERRIDE (set by index.js if needed)
+// Then try environment variable, then fallback to localhost
+export const API_BASE_URL = 
+  (typeof window !== 'undefined' && window.API_BASE_URL_OVERRIDE) || 
+  import.meta.env.PUBLIC_API_BASE_URL || 
+  'http://localhost:8000';
+
+console.log('API_BASE_URL from env:', import.meta.env.PUBLIC_API_BASE_URL);
+console.log('Final API_BASE_URL being used:', API_BASE_URL);
 
 /**
  * Fetch route rankings from the backend API
@@ -31,21 +38,41 @@ export async function fetchRouteRankings(origin, destination, date) {
     url += `?${params.toString()}`;
   }
 
-  // Make the API request
-  const response = await fetch(url);
-  
-  // Handle HTTP errors
-  if (!response.ok) {
-    let errorDetail = `HTTP error ${response.status}`;
-    try {
-        const errorData = await response.json();
-        errorDetail = errorData.detail || errorDetail;
-    } catch (e) { /* Ignore if response body isn't JSON */ }
-    throw new Error(errorDetail);
+  console.log(`Fetching data from: ${url}`);
+
+  try {
+    // Make the API request
+    const response = await fetch(url, {
+      mode: 'cors',
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    
+    console.log(`Response status: ${response.status} ${response.statusText}`);
+    
+    // Handle HTTP errors
+    if (!response.ok) {
+      let errorDetail = `HTTP error ${response.status}`;
+      try {
+          const errorData = await response.json();
+          console.error("Error response data:", errorData);
+          errorDetail = errorData.detail || errorDetail;
+      } catch (e) {
+          console.error("Failed to parse error JSON:", e);
+      }
+      throw new Error(errorDetail);
+    }
+    
+    // Parse and return the data
+    const data = await response.json();
+    console.log("Received data:", data);
+    return data;
+  } catch (error) {
+    console.error(`Error fetching from ${url}:`, error);
+    throw new Error(`Failed to fetch: ${error.message}`);
   }
-  
-  // Parse and return the data
-  return await response.json();
 }
 
 /**
@@ -55,11 +82,26 @@ export async function fetchRouteRankings(origin, destination, date) {
  */
 export async function fetchHealthStatus() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/health`);
+    const url = `${API_BASE_URL}/api/health`;
+    console.log(`Checking health status at: ${url}`);
+    
+    const response = await fetch(url, {
+      mode: 'cors',
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    
+    console.log(`Health check response: ${response.status} ${response.statusText}`);
+    
     if (!response.ok) {
       throw new Error(`Health check failed: ${response.status}`);
     }
-    return await response.json();
+    
+    const data = await response.json();
+    console.log("Health check data:", data);
+    return data;
   } catch (error) {
     console.warn('Health check failed:', error);
     return { status: 'error', system_initialized: false };
