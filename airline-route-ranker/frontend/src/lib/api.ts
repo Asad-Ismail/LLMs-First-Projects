@@ -3,8 +3,17 @@
  */
 
 // The backend API URL (use environment variables for production)
-export const API_BASE_URL = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:8000';
-console.log('API_BASE_URL:', API_BASE_URL);
+let apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:8000';
+
+// Remove any quotes that might be included in the URL string
+if (typeof apiBaseUrl === 'string') {
+  apiBaseUrl = apiBaseUrl.replace(/^["'](.+)["']$/, '$1');
+}
+
+export const API_BASE_URL = apiBaseUrl;
+
+console.log('API_BASE_URL from env:', import.meta.env.PUBLIC_API_BASE_URL);
+console.log('Final API_BASE_URL being used:', API_BASE_URL);
 
 // Flight reliability data for a single flight in a route
 export interface FlightReliabilityData {
@@ -95,21 +104,41 @@ export async function fetchRouteRankings(
     url += `?${params.toString()}`;
   }
 
-  // Make the API request
-  const response = await fetch(url);
-  
-  // Handle HTTP errors
-  if (!response.ok) {
-    let errorDetail = `HTTP error ${response.status}`;
-    try {
+  console.log(`Fetching data from: ${url}`);
+
+  try {
+    // Make the API request
+    const response = await fetch(url, {
+      mode: 'cors',
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    
+    console.log(`Response status: ${response.status} ${response.statusText}`);
+    
+    // Handle HTTP errors
+    if (!response.ok) {
+      let errorDetail = `HTTP error ${response.status}`;
+      try {
         const errorData = await response.json();
+        console.error("Error response data:", errorData);
         errorDetail = errorData.detail || errorDetail;
-    } catch (e) { /* Ignore if response body isn't JSON */ }
-    throw new Error(errorDetail);
+      } catch (e) {
+        console.error("Failed to parse error JSON:", e);
+      }
+      throw new Error(errorDetail);
+    }
+    
+    // Parse and return the data
+    const data = await response.json();
+    console.log("Received data:", data);
+    return data;
+  } catch (error: unknown) {
+    console.error(`Error fetching from ${url}:`, error);
+    throw new Error(`Failed to fetch: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-  
-  // Parse and return the data
-  return await response.json();
 }
 
 /**
@@ -119,11 +148,26 @@ export async function fetchRouteRankings(
  */
 export async function fetchHealthStatus(): Promise<{status: string, system_initialized: boolean}> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/health`);
+    const url = `${API_BASE_URL}/api/health`;
+    console.log(`Checking health status at: ${url}`);
+    
+    const response = await fetch(url, {
+      mode: 'cors',
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    
+    console.log(`Health check response: ${response.status} ${response.statusText}`);
+    
     if (!response.ok) {
       throw new Error(`Health check failed: ${response.status}`);
     }
-    return await response.json();
+    
+    const data = await response.json();
+    console.log("Health check data:", data);
+    return data;
   } catch (error) {
     console.warn('Health check failed:', error);
     return { status: 'error', system_initialized: false };
@@ -144,7 +188,13 @@ export async function fetchAvailableDates(
   const url = `${API_BASE_URL}/api/cache/dates/${origin.toUpperCase()}/${destination.toUpperCase()}`;
   
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      mode: 'cors',
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
     
     // Handle any status code (including 404) since we modified the backend
     // to always return a valid response with available_dates array
@@ -173,8 +223,11 @@ export async function submitContactForm(
   try {
     const response = await fetch(url, {
       method: 'POST',
+      mode: 'cors',
+      credentials: 'same-origin',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
       body: JSON.stringify(formData)
     });
