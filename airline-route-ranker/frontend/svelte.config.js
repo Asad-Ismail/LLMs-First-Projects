@@ -15,7 +15,12 @@ const config = {
 			pages: 'build',
 			assets: 'build',
 			fallback: 'index.html'  // Important for SPA routing
-		})
+		}),
+		// Ensure paths are relative to the base URL
+		paths: {
+			base: '',
+			assets: ''
+		}
 	}
 };
 
