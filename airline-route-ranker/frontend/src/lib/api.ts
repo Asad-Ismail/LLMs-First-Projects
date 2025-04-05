@@ -5,13 +5,19 @@
 // The backend API URL (use environment variables for production)
 let apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
-// TEMPORARILY HARDCODED API KEY FOR TESTING
-// Remove this hardcoding after confirming it works
-const apiKey = '84c8ebf0be891caf5da18af655c8ba18';  // Hardcoded production API key
+// API key for authentication - get from environment variables
+// Make sure this is set in your Render.com environment variables as PUBLIC_API_KEY
+const apiKey = import.meta.env.PUBLIC_API_KEY || '';
 
-// Debug logging - don't show the full key
-console.log('Using API key from hardcoded value (first 5 chars):', apiKey.substring(0, 5) + '...');
-console.log('API key length:', apiKey.length);
+// Debug logging for the API key
+console.log('Using API key from env (first 5 chars):', apiKey ? apiKey.substring(0, 5) + '...' : 'NOT SET');
+console.log('API key length:', apiKey ? apiKey.length : 0);
+
+// Simple validation - check if API key is set
+if (!apiKey) {
+  console.error('WARNING: API key not set! Authentication will fail.');
+  console.error('Make sure PUBLIC_API_KEY is set in your environment variables.');
+}
 
 // Remove any quotes that might be included in the URL string
 if (typeof apiBaseUrl === 'string') {

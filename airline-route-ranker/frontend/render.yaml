@@ -3,10 +3,17 @@ services:
     name: airline-route-ranker
     env: static
     buildCommand: >
-      echo "Building with API key starting with: ${API_KEY:0:5}..." &&
+      echo "Building with environment variables" &&
+      if [ -z "$API_KEY" ]; then 
+        echo "ERROR: API_KEY environment variable is not set!"; 
+        echo "Please set the API_KEY environment variable in Render.com dashboard.";
+        exit 1; 
+      else 
+        echo "✅ API key is set (first chars: ${API_KEY:0:5}...)"; 
+      fi &&
       NODE_ENV=production 
       PUBLIC_API_BASE_URL=https://airline-route-reliability.onrender.com 
-      PUBLIC_API_KEY=$API_KEY 
+      PUBLIC_API_KEY="$API_KEY" 
       npm install && npm run build:deploy
     staticPublishPath: ./build
     headers:
@@ -27,5 +34,7 @@ services:
         value: 18
       - key: PUBLIC_API_BASE_URL
         value: https://airline-route-reliability.onrender.com
+      # API key should be set in Render dashboard
+      # Make sure to use the same key as in your backend service
       - key: API_KEY
         sync: false 

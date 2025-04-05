@@ -4,7 +4,7 @@ import { defineConfig } from 'vite';
 // Log the environment variables to help debug
 console.log('Build Environment Variables:', {
 	PUBLIC_API_BASE_URL: process.env.PUBLIC_API_BASE_URL,
-	PUBLIC_API_KEY: process.env.PUBLIC_API_KEY,
+	PUBLIC_API_KEY: process.env.PUBLIC_API_KEY ? process.env.PUBLIC_API_KEY.substring(0, 5) + '...' : 'NOT SET',
 	NODE_ENV: process.env.NODE_ENV
 });
 
@@ -13,12 +13,15 @@ export default defineConfig({
 	resolve: {
 		extensions: ['.js', '.ts', '.json']
 	},
-	// Define fallback values for environment variables to ensure they're available
+	// Define environment variables to be injected at build time
 	define: {
+		// API base URL - fallback to production URL if not specified
 		'import.meta.env.PUBLIC_API_BASE_URL': 
 			JSON.stringify(process.env.PUBLIC_API_BASE_URL || 'https://airline-route-reliability.onrender.com'),
+		
+		// API key - critical for authentication
 		'import.meta.env.PUBLIC_API_KEY':
-			JSON.stringify(process.env.PUBLIC_API_KEY || 'dev-api-key-change-in-production')
+			JSON.stringify(process.env.PUBLIC_API_KEY || ''),
 	},
 	build: {
 		// Ensure TypeScript files are properly processed
