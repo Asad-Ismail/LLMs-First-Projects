@@ -7,6 +7,8 @@ import { API_BASE_URL } from '../api.js';
 
 if (!API_BASE_URL || API_BASE_URL === 'http://localhost:8000') {
   console.warn('API_BASE_URL not properly set through environment variables, using hardcoded fallback');
+  // Make sure the override URL doesn't have any quotes
+  const cleanUrl = 'https://airline-route-reliability.onrender.com';
   // @ts-ignore - Override the API_BASE_URL if it's not set
-  window.API_BASE_URL_OVERRIDE = 'https://airline-route-reliability.onrender.com';
+  window.API_BASE_URL_OVERRIDE = cleanUrl;
 } 

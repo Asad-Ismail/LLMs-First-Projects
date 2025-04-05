@@ -15,7 +15,7 @@ export default defineConfig({
 	// Define fallback values for environment variables to ensure they're available
 	define: {
 		'import.meta.env.PUBLIC_API_BASE_URL': 
-			JSON.stringify(process.env.PUBLIC_API_BASE_URL || 'https://airline-route-reliability.onrender.com')
+			process.env.PUBLIC_API_BASE_URL || 'https://airline-route-reliability.onrender.com'
 	},
 	build: {
 		// Ensure TypeScript files are properly processed

@@ -5,10 +5,17 @@
 // The backend API URL (use environment variables for production)
 // First try window.API_BASE_URL_OVERRIDE (set by index.js if needed)
 // Then try environment variable, then fallback to localhost
-export const API_BASE_URL = 
+let apiBaseUrl = 
   (typeof window !== 'undefined' && window.API_BASE_URL_OVERRIDE) || 
   import.meta.env.PUBLIC_API_BASE_URL || 
   'http://localhost:8000';
+
+// Remove any quotes that might be included in the URL string
+if (typeof apiBaseUrl === 'string') {
+  apiBaseUrl = apiBaseUrl.replace(/^["'](.+)["']$/, '$1');
+}
+
+export const API_BASE_URL = apiBaseUrl;
 
 console.log('API_BASE_URL from env:', import.meta.env.PUBLIC_API_BASE_URL);
 console.log('Final API_BASE_URL being used:', API_BASE_URL);
