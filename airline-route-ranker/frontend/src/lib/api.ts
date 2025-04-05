@@ -5,11 +5,12 @@
 // The backend API URL (use environment variables for production)
 let apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
-// API key for authentication
-const apiKey = import.meta.env.PUBLIC_API_KEY || 'dev-api-key-change-in-production';
+// TEMPORARILY HARDCODED API KEY FOR TESTING
+// Remove this hardcoding after confirming it works
+const apiKey = '84c8ebf0be891caf5da18af655c8ba18';  // Hardcoded production API key
 
 // Debug logging - don't show the full key
-console.log('Using API key from env (first 5 chars):', apiKey.substring(0, 5) + '...');
+console.log('Using API key from hardcoded value (first 5 chars):', apiKey.substring(0, 5) + '...');
 console.log('API key length:', apiKey.length);
 
 // Remove any quotes that might be included in the URL string
