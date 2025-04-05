@@ -8,6 +8,10 @@ let apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:8000';
 // API key for authentication
 const apiKey = import.meta.env.PUBLIC_API_KEY || 'dev-api-key-change-in-production';
 
+// Debug logging - don't show the full key
+console.log('Using API key from env (first 5 chars):', apiKey.substring(0, 5) + '...');
+console.log('API key length:', apiKey.length);
+
 // Remove any quotes that might be included in the URL string
 if (typeof apiBaseUrl === 'string') {
   // This handles both cases:
