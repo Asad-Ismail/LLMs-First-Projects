@@ -37,7 +37,7 @@ origins = [
     "http://127.0.0.1:5175",
     "http://localhost:3000",  # Common development port
     "http://127.0.0.1:3000",
-    # Add production URLs here
+    # Production URLs
     "https://airline-route-ranker.onrender.com",  # Production frontend on Render
     "https://flights-reliablity-fe.onrender.com",  # Actual frontend domain
     "https://*.onrender.com",  # Wildcard for any Render subdomain
@@ -54,26 +54,41 @@ app.add_middleware(
 # Simple API key middleware
 @app.middleware("http")
 async def verify_api_key(request: Request, call_next):
+    # Log request info to help debug
+    print(f"Incoming request: {request.method} {request.url.path}")
+    print(f"Request headers: {request.headers.get('origin')}, API Key Header: {'X-API-Key' in request.headers}")
+    
     # Skip authentication for OPTIONS requests (CORS preflight)
     if request.method == "OPTIONS":
-        return await call_next(request)
+        response = await call_next(request)
+        return response
     
     # Skip authentication for health endpoint
     if request.url.path == "/api/health":
-        return await call_next(request)
+        response = await call_next(request)
+        return response
     
     # Get API key from header
     api_key = request.headers.get("X-API-Key")
+    
+    # Print API key for debugging (redact in production)
+    print(f"Received API key: {api_key[:5]}... vs Expected: {API_KEY[:5]}...")
     
     # Validate API key (allow API calls if the key matches)
     if not api_key or api_key != API_KEY:
         return JSONResponse(
             status_code=401,
-            content={"detail": "Invalid or missing API key"}
+            content={"detail": "Invalid or missing API key"},
+            headers={
+                "Access-Control-Allow-Origin": "*",  # Allow any origin to receive the error
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                "Access-Control-Allow-Headers": "*"
+            }
         )
     
     # If API key is valid, proceed with the request
-    return await call_next(request)
+    response = await call_next(request)
+    return response
 
 # Initialize the flight analysis system
 try:

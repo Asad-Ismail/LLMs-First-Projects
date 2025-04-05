@@ -196,6 +196,10 @@ export async function fetchAvailableDates(
 ): Promise<string[]> {
   const url = `${API_BASE_URL}/api/cache/dates/${origin.toUpperCase()}/${destination.toUpperCase()}`;
   
+  console.log(`Fetching available dates from: ${url}`);
+  console.log(`Using API key: ${apiKey.substring(0, 5)}...`);
+  console.log(`Request headers:`, DEFAULT_HEADERS);
+  
   try {
     const response = await fetch(url, {
       mode: 'cors',
@@ -203,12 +207,24 @@ export async function fetchAvailableDates(
       headers: DEFAULT_HEADERS
     });
     
+    console.log(`Response status: ${response.status} ${response.statusText}`);
+    
+    // If unauthorized, log more details about the API key issue
+    if (response.status === 401) {
+      console.error('API Key authentication failed. Check that the API key matches between frontend and backend.');
+      return [];
+    }
+    
     // Handle any status code (including 404) since we modified the backend
     // to always return a valid response with available_dates array
     const data = await response.json();
     return data.available_dates || [];
   } catch (error) {
     console.warn('Error fetching available dates:', error);
+    // Check if error is related to CORS
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      console.error('CORS error: This is likely a CORS policy issue. Check that the backend is properly configured to allow requests from this origin.');
+    }
     return [];
   }
 }
