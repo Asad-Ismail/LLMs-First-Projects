@@ -35,6 +35,7 @@ origins = [
     "http://127.0.0.1:3000",
     # Add production URLs here
     "https://airline-route-ranker.onrender.com",  # Production frontend on Render
+    "https://flights-reliablity-fe.onrender.com",  # Actual frontend domain
     "https://*.onrender.com",  # Wildcard for any Render subdomain
 ]
 
