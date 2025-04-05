@@ -7,6 +7,10 @@ let apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
 // Remove any quotes that might be included in the URL string
 if (typeof apiBaseUrl === 'string') {
+  // This handles both cases:
+  // 1. When the URL has quotes around it: "https://example.com"
+  // 2. Or when the URL is already clean: https://example.com
+  // The regex only replaces if there are quotes at beginning and end
   apiBaseUrl = apiBaseUrl.replace(/^["'](.+)["']$/, '$1');
 }
 
@@ -96,8 +100,8 @@ export async function fetchRouteRankings(
   if (date) {
     params.append('date', date);
   }
-  // Set max_routes to 10 instead of default 5
-  params.append('max_routes', '10');
+  // Set max_routes to 5 (default backend value)
+  params.append('max_routes', '5');
   
   // Add params to URL if any exist
   if (params.toString()) {
