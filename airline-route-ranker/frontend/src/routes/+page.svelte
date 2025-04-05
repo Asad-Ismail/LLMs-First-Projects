@@ -594,7 +594,7 @@
             <span class="font-medium">Showing top {routeData.routes.length} results</span>
           </div>
           <!-- Debug information -->
-          <div class="mb-4 text-xs text-white/70">
+          <div class="mb-4 text-xs text-white/70 hidden">
             <span class="font-medium">Debug - Routes in data: {routeData.routes.length}</span>
           </div>
         {/if}
