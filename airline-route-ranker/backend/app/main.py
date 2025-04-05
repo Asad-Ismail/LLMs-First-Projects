@@ -42,8 +42,8 @@ origins = [
     "https://flights-reliablity-fe.onrender.com",  # Actual frontend domain
     "https://*.onrender.com",  # Wildcard for any Render subdomain
     # Custom domain
-    "https://www.bestflights.org",
-    "https://bestflights.org",
+    "https://www.bestflighs.org",  # Note: "flighs" not "flights" (typo in domain name)
+    "https://bestflighs.org",
 ]
 
 app.add_middleware(
@@ -69,7 +69,29 @@ async def verify_api_key(request: Request, call_next):
     cors_headers = {}
     if origin:
         # Check if origin is allowed
-        if origin in origins or any(origin.endswith(o.replace("*", "")) for o in origins if "*" in o):
+        is_allowed = origin in origins
+        
+        # Check wildcard matches (like *.onrender.com)
+        is_allowed_by_wildcard = False
+        for allowed_origin in origins:
+            if "*" in allowed_origin:
+                # Convert wildcard pattern to a domain suffix
+                pattern = allowed_origin.replace("*", "")
+                if origin.endswith(pattern):
+                    is_allowed_by_wildcard = True
+                    print(f"✅ Origin {origin} matches wildcard pattern {allowed_origin}")
+                    break
+        
+        if is_allowed:
+            print(f"✅ Origin {origin} is explicitly allowed")
+            cors_headers = {
+                "Access-Control-Allow-Origin": origin,
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                "Access-Control-Allow-Headers": "X-API-Key, Accept, Authorization, Content-Type, X-Requested-With"
+            }
+        elif is_allowed_by_wildcard:
+            print(f"✅ Origin {origin} is allowed by wildcard")
             cors_headers = {
                 "Access-Control-Allow-Origin": origin,
                 "Access-Control-Allow-Credentials": "true",
@@ -77,10 +99,14 @@ async def verify_api_key(request: Request, call_next):
                 "Access-Control-Allow-Headers": "X-API-Key, Accept, Authorization, Content-Type, X-Requested-With"
             }
         else:
-            print(f"WARNING: Request from unauthorized origin: {origin}")
+            print(f"⚠️ WARNING: Request from unauthorized origin: {origin}")
+            print(f"Allowed origins: {origins}")
+    else:
+        print("⚠️ No origin header in request")
     
     # Skip authentication for OPTIONS requests (CORS preflight)
     if request.method == "OPTIONS":
+        print(f"🔄 Handling OPTIONS request with CORS headers: {cors_headers}")
         return JSONResponse(
             status_code=200,
             content={"detail": "OK"},
