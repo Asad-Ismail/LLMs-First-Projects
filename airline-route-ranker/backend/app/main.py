@@ -41,6 +41,9 @@ origins = [
     "https://airline-route-ranker.onrender.com",  # Production frontend on Render
     "https://flights-reliablity-fe.onrender.com",  # Actual frontend domain
     "https://*.onrender.com",  # Wildcard for any Render subdomain
+    # Custom domain
+    "https://www.bestflights.org",
+    "https://bestflights.org",
 ]
 
 app.add_middleware(
@@ -56,38 +59,66 @@ app.add_middleware(
 async def verify_api_key(request: Request, call_next):
     # Log request info to help debug
     print(f"Incoming request: {request.method} {request.url.path}")
-    print(f"Request headers: {request.headers.get('origin')}, API Key Header: {'X-API-Key' in request.headers}")
+    print(f"Request origin: {request.headers.get('origin')}")
+    print(f"API Key Header present: {'X-API-Key' in request.headers}")
+    
+    # Get the origin for CORS
+    origin = request.headers.get("origin")
+    
+    # Setup CORS headers based on the origin
+    cors_headers = {}
+    if origin:
+        # Check if origin is allowed
+        if origin in origins or any(origin.endswith(o.replace("*", "")) for o in origins if "*" in o):
+            cors_headers = {
+                "Access-Control-Allow-Origin": origin,
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                "Access-Control-Allow-Headers": "X-API-Key, Accept, Authorization, Content-Type, X-Requested-With"
+            }
+        else:
+            print(f"WARNING: Request from unauthorized origin: {origin}")
     
     # Skip authentication for OPTIONS requests (CORS preflight)
     if request.method == "OPTIONS":
-        response = await call_next(request)
-        return response
+        return JSONResponse(
+            status_code=200,
+            content={"detail": "OK"},
+            headers=cors_headers
+        )
     
     # Skip authentication for health endpoint
     if request.url.path == "/api/health":
         response = await call_next(request)
+        # Add CORS headers to the response
+        for key, value in cors_headers.items():
+            response.headers[key] = value
         return response
     
     # Get API key from header
     api_key = request.headers.get("X-API-Key")
     
     # Print API key for debugging (redact in production)
-    print(f"Received API key: {api_key[:5]}... vs Expected: {API_KEY[:5]}...")
+    if api_key:
+        print(f"Received API key: {api_key[:5]}... vs Expected: {API_KEY[:5]}...")
+    else:
+        print("No API key provided in request")
     
     # Validate API key (allow API calls if the key matches)
     if not api_key or api_key != API_KEY:
         return JSONResponse(
             status_code=401,
             content={"detail": "Invalid or missing API key"},
-            headers={
-                "Access-Control-Allow-Origin": "*",  # Allow any origin to receive the error
-                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-                "Access-Control-Allow-Headers": "*"
-            }
+            headers=cors_headers
         )
     
     # If API key is valid, proceed with the request
     response = await call_next(request)
+    
+    # Add CORS headers to the response
+    for key, value in cors_headers.items():
+        response.headers[key] = value
+    
     return response
 
 # Initialize the flight analysis system
