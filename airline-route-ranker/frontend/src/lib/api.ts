@@ -5,6 +5,9 @@
 // The backend API URL (use environment variables for production)
 let apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
+// API key for authentication
+const apiKey = import.meta.env.PUBLIC_API_KEY || 'dev-api-key-change-in-production';
+
 // Remove any quotes that might be included in the URL string
 if (typeof apiBaseUrl === 'string') {
   // This handles both cases:
@@ -18,6 +21,12 @@ export const API_BASE_URL = apiBaseUrl;
 
 console.log('API_BASE_URL from env:', import.meta.env.PUBLIC_API_BASE_URL);
 console.log('Final API_BASE_URL being used:', API_BASE_URL);
+
+// Default headers to use for all API requests
+const DEFAULT_HEADERS = {
+  'Accept': 'application/json',
+  'X-API-Key': apiKey
+};
 
 // Flight reliability data for a single flight in a route
 export interface FlightReliabilityData {
@@ -115,9 +124,7 @@ export async function fetchRouteRankings(
     const response = await fetch(url, {
       mode: 'cors',
       credentials: 'same-origin',
-      headers: {
-        'Accept': 'application/json'
-      }
+      headers: DEFAULT_HEADERS
     });
     
     console.log(`Response status: ${response.status} ${response.statusText}`);
@@ -158,9 +165,7 @@ export async function fetchHealthStatus(): Promise<{status: string, system_initi
     const response = await fetch(url, {
       mode: 'cors',
       credentials: 'same-origin',
-      headers: {
-        'Accept': 'application/json'
-      }
+      headers: DEFAULT_HEADERS
     });
     
     console.log(`Health check response: ${response.status} ${response.statusText}`);
@@ -195,9 +200,7 @@ export async function fetchAvailableDates(
     const response = await fetch(url, {
       mode: 'cors',
       credentials: 'same-origin',
-      headers: {
-        'Accept': 'application/json'
-      }
+      headers: DEFAULT_HEADERS
     });
     
     // Handle any status code (including 404) since we modified the backend
@@ -230,8 +233,8 @@ export async function submitContactForm(
       mode: 'cors',
       credentials: 'same-origin',
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        ...DEFAULT_HEADERS,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(formData)
     });

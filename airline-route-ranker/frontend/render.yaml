@@ -2,7 +2,7 @@ services:
   - type: web
     name: airline-route-ranker
     env: static
-    buildCommand: NODE_ENV=production PUBLIC_API_BASE_URL=https://airline-route-reliability.onrender.com npm install && npm run build:deploy
+    buildCommand: NODE_ENV=production PUBLIC_API_BASE_URL=https://airline-route-reliability.onrender.com PUBLIC_API_KEY=$API_KEY npm install && npm run build:deploy
     staticPublishPath: ./build
     headers:
       - path: /_app/**/*
@@ -21,4 +21,6 @@ services:
       - key: NODE_VERSION
         value: 18
       - key: PUBLIC_API_BASE_URL
-        value: https://airline-route-reliability.onrender.com 
+        value: https://airline-route-reliability.onrender.com
+      - key: PUBLIC_API_KEY
+        sync: false 

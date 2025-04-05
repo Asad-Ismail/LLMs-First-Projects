@@ -1,8 +1,9 @@
 """
 FastAPI backend for the Airline Route Ranker application.
 """
-from fastapi import FastAPI, HTTPException, Path, Query, Body
+from fastapi import FastAPI, HTTPException, Path, Query, Body, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import os
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
@@ -15,6 +16,9 @@ from .utils.email import send_contact_email
 
 # Load environment variables
 load_dotenv()
+
+# Get API key from environment (default to a development key if not set)
+API_KEY = os.getenv("API_KEY", "dev-api-key-change-in-production")
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -46,6 +50,30 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Simple API key middleware
+@app.middleware("http")
+async def verify_api_key(request: Request, call_next):
+    # Skip authentication for OPTIONS requests (CORS preflight)
+    if request.method == "OPTIONS":
+        return await call_next(request)
+    
+    # Skip authentication for health endpoint
+    if request.url.path == "/api/health":
+        return await call_next(request)
+    
+    # Get API key from header
+    api_key = request.headers.get("X-API-Key")
+    
+    # Validate API key (allow API calls if the key matches)
+    if not api_key or api_key != API_KEY:
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "Invalid or missing API key"}
+        )
+    
+    # If API key is valid, proceed with the request
+    return await call_next(request)
 
 # Initialize the flight analysis system
 try:
