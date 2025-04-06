@@ -2,19 +2,26 @@
  * API interface for the Airline Route Ranker backend
  */
 
-// The backend API URL (use environment variables for production)
-let apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:8000';
+// Import BOTH public environment variables using the SvelteKit method
+import { PUBLIC_API_KEY, PUBLIC_API_BASE_URL } from '$env/static/public';
 
-// API key for authentication - get from environment variables
-// Make sure this is set in your Render.com environment variables as PUBLIC_API_KEY
-const apiKey = import.meta.env.PUBLIC_API_KEY || '';
+// Use the imported PUBLIC_API_BASE_URL, provide a fallback if necessary
+// Remove the old Vite-style access
+let apiBaseUrl = PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
-// Debug logging for the API key
-console.log('Using API key from env (first 5 chars):', apiKey ? apiKey.substring(0, 5) + '...' : 'NOT SET');
-console.log('API key length:', apiKey ? apiKey.length : 0);
+// API key is already imported correctly
+
+// You could add a fallback for development/testing if needed
+const apiKey = PUBLIC_API_KEY || '';
+
+// Debug logging with detailed information
+// This log might still show "NOT SET" initially due to timing, but the variable will be correct later
+console.log('Using API key from env:', PUBLIC_API_KEY ?
+  `${PUBLIC_API_KEY.substring(0, 5)}... (length: ${PUBLIC_API_KEY.length})` :
+  'NOT SET (length: 0)');
 
 // Simple validation - check if API key is set
-if (!apiKey) {
+if (!PUBLIC_API_KEY) {
   console.error('WARNING: API key not set! Authentication will fail.');
   console.error('Make sure PUBLIC_API_KEY is set in your environment variables.');
 }
@@ -28,15 +35,17 @@ if (typeof apiBaseUrl === 'string') {
   apiBaseUrl = apiBaseUrl.replace(/^["'](.+)["']$/, '$1');
 }
 
+// Export the processed base URL
 export const API_BASE_URL = apiBaseUrl;
 
-console.log('API_BASE_URL from env:', import.meta.env.PUBLIC_API_BASE_URL);
+// Update debug logs to use the correct variable source
+console.log('API_BASE_URL from $env/static/public:', PUBLIC_API_BASE_URL); // Log the imported value
 console.log('Final API_BASE_URL being used:', API_BASE_URL);
 
 // Default headers to use for all API requests
 const DEFAULT_HEADERS = {
   'Accept': 'application/json',
-  'X-API-Key': apiKey
+  'X-API-Key': apiKey // Using the variable with fallback
 };
 
 // Flight reliability data for a single flight in a route
@@ -208,7 +217,8 @@ export async function fetchAvailableDates(
   const url = `${API_BASE_URL}/api/cache/dates/${origin.toUpperCase()}/${destination.toUpperCase()}`;
   
   console.log(`Fetching available dates from: ${url}`);
-  console.log(`Using API key: ${apiKey.substring(0, 5)}...`);
+  // Use PUBLIC_API_KEY directly here as it should be initialized by the time the function runs
+  console.log(`Using API key: ${PUBLIC_API_KEY ? PUBLIC_API_KEY.substring(0, 5) + '...' : 'MISSING'}`);
   console.log(`Request headers:`, DEFAULT_HEADERS);
   
   try {
