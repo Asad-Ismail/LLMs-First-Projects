@@ -174,7 +174,7 @@
   }
   
   .prose strong {
-    color: #7dd3fc; /* sky-300 */
+    color: #ffffff; /* Changed from #7dd3fc (sky-300) to white for better accessibility */
   }
   
   .prose ol {
