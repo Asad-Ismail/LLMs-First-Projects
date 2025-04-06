@@ -132,11 +132,6 @@
     <div class="text-xs text-gray-500 mt-1">
       Flights: {flightData.operating_flight_numbers?.join(', ')}
     </div>
-    {#if hasIncompleteData}
-      <div class="text-xs text-flight-warning mt-1" title="Data quality might affect score accuracy">
-        ⚠️ Limited historical data available
-      </div>
-    {/if}
   </div>
 
   <!-- Stats -->
