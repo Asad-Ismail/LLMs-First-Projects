@@ -2,5 +2,10 @@
 	"/": [],
 	"/about": [],
 	"/contact": [],
-	"/faq": []
+	"/faq": [],
+	"/login": [],
+	"/profile": [],
+	"/profile/edit": [],
+	"/reset-password": [],
+	"/signup": []
 }

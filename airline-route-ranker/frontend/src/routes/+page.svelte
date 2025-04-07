@@ -6,6 +6,8 @@
   import Loader from '$lib/components/Loader.svelte';
   import ErrorMessage from '$lib/components/ErrorMessage.svelte';
   import { fetchRouteRankings, fetchHealthStatus, fetchAvailableDates, type RouteRankingResponse, type RouteData } from '$lib/api';
+  import { recordSearch } from '$lib/supabase';
+  import AuthControls from '$lib/components/Auth/AuthControls.svelte';
 
   // Prefill origin and destination with default values
   let origin = 'AMS';
@@ -511,6 +513,22 @@
       if (!routeData.routes || routeData.routes.length === 0) {
         errorMessage = `No flight data found for the route ${origin.toUpperCase()} → ${destination.toUpperCase()}. Check airports or try later.`;
       }
+      
+      // Record search history for logged-in users
+      try {
+        await recordSearch(
+          origin.toUpperCase(),
+          destination.toUpperCase(),
+          travelDate,
+          { 
+            searchDate: new Date().toISOString(),
+            routesFound: result.routes?.length || 0
+          }
+        );
+      } catch (err) {
+        // Non-critical error, just log it
+        console.warn('Failed to record search history:', err);
+      }
     } catch (err: unknown) {
       console.error("Fetch error:", err);
       errorMessage = `Failed to fetch rankings: ${err instanceof Error ? err.message : 'Unknown error'}. Is the backend running?`;
@@ -573,6 +591,11 @@
           <a href="/faq" class="text-white/90 hover:text-sky-accent transition-colors text-sm font-medium">FAQ</a>
           <span class="text-sky-accent/50">|</span>
           <a href="/contact" class="text-white/90 hover:text-sky-accent transition-colors text-sm font-medium">Contact</a>
+        </div>
+        
+        <!-- Auth Controls -->
+        <div class="ml-2 bg-white/5 hover:bg-white/10 backdrop-blur-sm px-4 py-1.5 rounded-full transition-all duration-300 border border-white/10 shadow-sm hover:shadow-md">
+          <AuthControls />
         </div>
       </nav>
       

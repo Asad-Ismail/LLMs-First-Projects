@@ -1,5 +1,6 @@
 <script lang="ts">
   import { submitContactForm } from '$lib/api';
+  import AuthControls from '$lib/components/Auth/AuthControls.svelte';
   
   // Form data
   let name = '';
@@ -98,6 +99,11 @@
           <a href="/faq" class="text-white/90 hover:text-sky-accent transition-colors text-sm font-medium">FAQ</a>
           <span class="text-sky-accent/50">|</span>
           <a href="/contact" class="text-white/90 hover:text-sky-accent transition-colors text-sm font-medium">Contact</a>
+        </div>
+        
+        <!-- Auth Controls -->
+        <div class="ml-2 bg-white/5 hover:bg-white/10 backdrop-blur-sm px-4 py-1.5 rounded-full transition-all duration-300 border border-white/10 shadow-sm hover:shadow-md">
+          <AuthControls />
         </div>
       </nav>
       

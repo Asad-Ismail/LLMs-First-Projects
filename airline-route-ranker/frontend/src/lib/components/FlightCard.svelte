@@ -1,6 +1,7 @@
 <script lang="ts">
   export let rank: number;
   export let flightData: any; // Route data from backend
+  import { supabase, saveRoute } from '$lib/supabase';
 
   // Function to determine color based on score
   function getScoreColor(score: number | null | undefined) {
@@ -109,6 +110,54 @@
   // if (flightData.reliability_data && flightData.reliability_data.length > 0) {
   //   console.log("First flight reliability data:", flightData.reliability_data[0]);
   // }
+
+  // Add save route functionality
+  let isSaving = false;
+  let saveError = '';
+  let saveSuccess = false;
+
+  // Function to check if user is authenticated
+  async function isAuthenticated() {
+    const { data: { user } } = await supabase.auth.getUser();
+    return !!user;
+  }
+
+  // Function to save a route
+  async function handleSaveRoute() {
+    // Reset state
+    isSaving = true;
+    saveError = '';
+    saveSuccess = false;
+
+    try {
+      // Check if authenticated
+      const authenticated = await isAuthenticated();
+      
+      if (!authenticated) {
+        // Redirect to login
+        window.location.href = '/login';
+        return;
+      }
+
+      // Save the route
+      await saveRoute(
+        flightData.route_path.split(' → ')[0],
+        flightData.route_path.split(' → ').pop(),
+        flightData
+      );
+
+      // Show success message
+      saveSuccess = true;
+      setTimeout(() => {
+        saveSuccess = false;
+      }, 3000);
+    } catch (err: any) {
+      saveError = err.message || 'Failed to save route';
+      console.error('Save route error:', err);
+    } finally {
+      isSaving = false;
+    }
+  }
 </script>
 
 <div class="bg-white/90 backdrop-blur shadow-lg rounded-lg p-4 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4 transition duration-200 ease-in-out hover:shadow-xl hover:bg-white/95">
@@ -166,6 +215,26 @@
     <div class="text-sm text-gray-600 mt-1">
       Avg Delay: <span class="font-medium">{delayPercentText}</span>
     </div>
+    
+    <!-- Save Route button -->
+    <button
+      on:click={handleSaveRoute}
+      class="mt-2 px-3 py-1 bg-sky-accent text-white rounded-md text-sm hover:bg-sky-dark transition duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-accent"
+      disabled={isSaving}
+    >
+      {#if isSaving}
+        <span class="inline-block animate-spin mr-1">↻</span>
+      {/if}
+      {isSaving ? 'Saving...' : 'Save Route'}
+    </button>
+    
+    <!-- Save Feedback Messages -->
+    {#if saveSuccess}
+      <div class="text-xs text-green-600 mt-1">Route saved successfully!</div>
+    {/if}
+    {#if saveError}
+      <div class="text-xs text-red-600 mt-1">{saveError}</div>
+    {/if}
   </div>
 </div>
 
