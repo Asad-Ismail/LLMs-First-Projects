@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { supabase } from '$lib/supabase';
+  import bestFlightsAuth from '$lib/auth';
+  import StarryBackground from '$lib/components/StarryBackground.svelte';
+  import Header from '$lib/components/Navigation/Header.svelte';
   import { goto } from '$app/navigation';
 
   // Form state
@@ -48,9 +50,7 @@
       }
 
       // Set the new password using the access token from the URL
-      const { error } = await supabase.auth.updateUser({
-        password: password
-      });
+      const { error } = await bestFlightsAuth.updatePassword(password);
 
       if (error) throw error;
 
@@ -77,9 +77,7 @@
     errorMessage = '';
     
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`
-      });
+      const { error } = await bestFlightsAuth.resetPassword(email);
       
       if (error) throw error;
       
@@ -93,15 +91,21 @@
   }
 </script>
 
-<div class="min-h-screen bg-sky-dark bg-[url('/starry-sky.svg')] bg-cover bg-fixed flex items-center justify-center p-4">
-  <div class="container mx-auto max-w-md">
-    <div class="flex flex-col items-center justify-center">
-      <h1 class="text-3xl font-bold text-white mb-6 text-center">Reset Your Password</h1>
+<div class="relative min-h-screen bg-sky-dark bg-[url('/starry-sky.svg')] bg-cover bg-fixed overflow-hidden">
+  <!-- Add our animated starry background -->
+  <StarryBackground starCount={150} bigStarCount={30} />
+  
+  <!-- Add navigation header -->
+  <Header currentPage="home" />
+  
+  <div class="container mx-auto max-w-md relative z-10 p-4 flex items-center justify-center" style="min-height: 100vh;">
+    <div class="flex flex-col items-center justify-center w-full">
+      <h1 class="text-3xl font-bold text-white mb-6 text-center text-shadow-lg">Reset Your BestFlights Password</h1>
       
       <div class="w-full max-w-md rounded-lg overflow-hidden border border-white/20 bg-white/10 backdrop-blur-md shadow-lg">
         <div class="bg-gradient-to-r from-sky-dark/70 to-flight-primary/70 p-4">
           <h2 class="text-xl font-bold text-white">Create New Password</h2>
-          <p class="text-white/80 text-sm">Please enter your new password below</p>
+          <p class="text-white/80 text-sm">Please enter your new BestFlights password below</p>
         </div>
         
         <div class="p-6">
@@ -195,4 +199,10 @@
       </div>
     </div>
   </div>
-</div> 
+</div>
+
+<style>
+  .text-shadow-lg {
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  }
+</style> 

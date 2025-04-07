@@ -1,13 +1,15 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { supabase } from '$lib/supabase';
+  import bestFlightsAuth from '$lib/auth';
+  import StarryBackground from '$lib/components/StarryBackground.svelte';
+  import Header from '$lib/components/Navigation/Header.svelte';
 
   let loading = true;
   let isAuthenticated = false;
 
   onMount(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await bestFlightsAuth.getCurrentUser();
     isAuthenticated = !!user;
     
     if (!isAuthenticated) {
@@ -18,9 +20,15 @@
   });
 </script>
 
-<div class="min-h-screen bg-sky-dark bg-[url('/starry-sky.svg')] bg-cover bg-fixed">
+<div class="relative min-h-screen bg-sky-dark bg-[url('/starry-sky.svg')] bg-cover bg-fixed overflow-hidden">
+  <!-- Add our animated starry background -->
+  <StarryBackground starCount={150} bigStarCount={30} shootingStarCount={3} />
+  
+  <!-- Add navigation header -->
+  <Header currentPage="profile" />
+  
   {#if loading}
-    <div class="flex justify-center items-center min-h-screen">
+    <div class="flex justify-center items-center min-h-screen relative z-10">
       <div class="animate-pulse flex space-x-4">
         <div class="rounded-full bg-slate-200/50 h-16 w-16"></div>
         <div class="flex-1 space-y-3 py-1">
@@ -33,6 +41,8 @@
       </div>
     </div>
   {:else if isAuthenticated}
-    <slot />
+    <div class="relative z-10">
+      <slot />
+    </div>
   {/if}
 </div> 
