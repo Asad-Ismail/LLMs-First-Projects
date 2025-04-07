@@ -17,14 +17,17 @@
     const maxRank = totalRoutes > 0 ? totalRoutes : 5;
     const position = (rankPosition - 1) / (maxRank - 1);
     
-    // Green for top performers (less than 25% through the list)
-    if (position < 0.25) return 'bg-emerald-500';
-    // Yellow/green for good performers (25-50%)
-    if (position < 0.5) return 'bg-lime-500';
-    // Yellow/orange for middle ranks (50-75%)
-    if (position < 0.75) return 'bg-amber-500';
-    // Red for bottom ranks (75-100%)
-    return 'bg-rose-500';
+    // Create a more gradual color scale that works for any number of flights
+    if (position <= 0.1) return 'bg-emerald-500'; // Top 10% - Bright green
+    if (position <= 0.2) return 'bg-emerald-400'; // Next 10% - Lighter green
+    if (position <= 0.3) return 'bg-lime-500';    // Next 10% - Lime green
+    if (position <= 0.4) return 'bg-lime-400';    // Next 10% - Lighter lime
+    if (position <= 0.5) return 'bg-yellow-500';  // Next 10% - Yellow
+    if (position <= 0.6) return 'bg-amber-500';   // Next 10% - Amber
+    if (position <= 0.7) return 'bg-orange-500';  // Next 10% - Orange
+    if (position <= 0.8) return 'bg-orange-600';  // Next 10% - Darker orange
+    if (position <= 0.9) return 'bg-rose-400';    // Next 10% - Light red
+    return 'bg-rose-600';                         // Bottom 10% - Dark red
   }
 
   // Function to get text color based on score
