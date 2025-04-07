@@ -20,6 +20,210 @@
   let originAirportName = "Amsterdam Airport Schiphol";
   let destinationAirportName = "Lahore Allama Iqbal International";
   
+  // Helper function to transform raw route data to the expected FlightCard format
+  function transformRouteData(rawRouteData: RouteRankingResponse | null) {
+    if (!rawRouteData || !rawRouteData.routes) return rawRouteData;
+    
+    // Transform each route
+    const transformedRoutes = rawRouteData.routes.map((route: RouteData, index: number) => {
+      // Create a complete route path that includes connections
+      let routePath = rawRouteData.query.origin;
+      
+      // Add connection airports if available
+      if (route.connection_airports && route.connection_airports.length > 0) {
+        route.connection_airports.forEach((airport: string) => {
+          routePath += ` → ${airport}`;
+        });
+      }
+      
+      // Add the destination
+      routePath += ` → ${rawRouteData.query.destination}`;
+      
+      // Format airline name - use the airline code and add full name if available
+      let airlineName = route.operating_airline || 'Unknown';
+      let airlineDisplay = airlineName;
+      
+      // Map common airline codes to full names
+      const airlineFullNames: Record<string, string> = {
+        'TK': 'TURKISH AIRLINES',
+        'EK': 'EMIRATES',
+        'QR': 'QATAR AIRWAYS',
+        'LH': 'LUFTHANSA',
+        'BA': 'BRITISH AIRWAYS',
+        'AF': 'AIR FRANCE',
+        'KL': 'KLM ROYAL DUTCH AIRLINES',
+        'SK': 'SCANDINAVIAN AIRLINES',
+        'UA': 'UNITED AIRLINES',
+        'AA': 'AMERICAN AIRLINES',
+        'DL': 'DELTA AIR LINES',
+        'CX': 'CATHAY PACIFIC',
+        'SQ': 'SINGAPORE AIRLINES',
+        'EY': 'ETIHAD AIRWAYS',
+        'LX': 'SWISS INTERNATIONAL AIR LINES',
+        'OS': 'AUSTRIAN AIRLINES',
+        'AY': 'FINNAIR',
+        'IB': 'IBERIA',
+        'JL': 'JAPAN AIRLINES',
+        'NH': 'ALL NIPPON AIRWAYS',
+        'OZ': 'ASIANA AIRLINES',
+        'AC': 'AIR CANADA',
+        'SU': 'AEROFLOT',
+        'ET': 'ETHIOPIAN AIRLINES'
+      };
+      
+      // If we have the full name, add it in parentheses
+      if (airlineFullNames[airlineName]) {
+        airlineDisplay = `${airlineName} (${airlineFullNames[airlineName]})`;
+      }
+      
+      // Format duration from minutes to hours and minutes (e.g., 755 -> 12h 35m)
+      let formattedDuration = route.formatted_duration || route.total_duration || '';
+      
+      // If we have raw minutes, convert to hours and minutes format
+      if (route.duration_raw_minutes && (!formattedDuration || formattedDuration.match(/^\d+$/))) {
+        const minutes = Number(route.duration_raw_minutes);
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        formattedDuration = `${hours}h ${mins}m`;
+      } else if (formattedDuration.match(/^\d+$/)) {
+        // If total_duration is just a number (like "755"), convert it to hours/minutes
+        const minutes = Number(formattedDuration);
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        formattedDuration = `${hours}h ${mins}m`;
+      }
+      
+      // Format price - use actual price if available
+      let priceAmount = '800'; // Default placeholder
+      let priceCurrency = 'USD';
+      
+      // Handle different price formats that might come from Supabase or API
+      if (typeof route.price === 'object' && route.price !== null) {
+        // Standard format from the interface - object with amount property
+        if (route.price.amount) {
+          priceAmount = route.price.amount;
+          priceCurrency = route.price.currency || 'USD';
+        }
+      } else if (typeof route.price === 'string') {
+        // If it's a string price (e.g., "252.00")
+        priceAmount = route.price;
+      } else if (typeof route.price === 'number') {
+        // If it's a numeric price
+        priceAmount = String(route.price);
+      }
+      
+      // Debug log to see what we're getting
+      console.log(`Route ${index+1} price data:`, route.price);
+      console.log(`Route ${index+1} reliability data:`, route.reliability_score, route.reliability_data);
+      
+      // Try to parse from route_data if available and price is still the default placeholder
+      if (priceAmount === '800' && route.route_data) {
+        try {
+          // Route data might be a string that needs parsing
+          const routeData = typeof route.route_data === 'string' 
+            ? JSON.parse(route.route_data) 
+            : route.route_data;
+            
+          // Check if there's a price field in the parsed data
+          if (routeData.price) {
+            priceAmount = typeof routeData.price === 'object' 
+              ? (routeData.price.amount || '800')
+              : String(routeData.price);
+          }
+        } catch (e) {
+          console.warn('Error parsing route_data for price:', e);
+        }
+      }
+      
+      // Inspect deeper into the object structure from Supabase CSV data
+      // This is a backup approach checking every property for price information
+      if (priceAmount === '800') {
+        // Recursively search for price-related properties
+        const findPrice = (obj: any): string | null => {
+          if (!obj || typeof obj !== 'object') return null;
+          
+          // Direct checks for common price properties
+          if (obj.price) {
+            if (typeof obj.price === 'object' && obj.price.amount) {
+              return obj.price.amount;
+            } else if (typeof obj.price === 'string' || typeof obj.price === 'number') {
+              return String(obj.price);
+            }
+          }
+          
+          // Check for properties that might contain "price" in the name
+          for (const key in obj) {
+            if (
+              key.toLowerCase().includes('price') || 
+              key.toLowerCase().includes('cost') || 
+              key.toLowerCase().includes('fare')
+            ) {
+              const value = obj[key];
+              if (typeof value === 'string' || typeof value === 'number') {
+                return String(value);
+              } else if (typeof value === 'object' && value !== null) {
+                if (value.amount) return String(value.amount);
+                if (value.value) return String(value.value);
+              }
+            }
+            
+            // Recursive search for nested objects
+            if (typeof obj[key] === 'object' && obj[key] !== null) {
+              const result = findPrice(obj[key]);
+              if (result) return result;
+            }
+          }
+          
+          return null;
+        };
+        
+        const foundPrice = findPrice(route);
+        if (foundPrice) priceAmount = foundPrice;
+      }
+      
+      // Process the reliability data
+      // IMPORTANT: Use the backend's actual reliability data, NEVER generate random scores
+      // If reliability_data is missing, create an empty array as fallback
+      const reliabilityData = route.reliability_data || [];
+      
+      // Create a properly formatted route object with all required fields
+      return {
+        // Keep original properties
+        ...route,
+        // Add missing properties expected by FlightCard
+        rank: route.rank || (index + 1),
+        route_path: routePath,
+        operating_airline: airlineDisplay,
+        operating_flight_numbers: route.operating_flight_numbers || [],
+        total_duration: formattedDuration,
+        price: {
+          amount: priceAmount,
+          currency: priceCurrency
+        },
+        // Use the actual reliability data from the backend
+        reliability_score: route.reliability_score || 0,
+        reliability_data: reliabilityData,
+        smart_rank: route.smart_rank || 0
+      };
+    });
+    
+    // Make sure routes maintain the rank order from the backend
+    // This is critical for consistent user experience
+    const sortedRoutes = transformedRoutes.sort((a, b) => {
+      // First by rank assigned by backend
+      if (a.rank !== b.rank) {
+        return a.rank - b.rank;
+      }
+      // Then by smart rank (higher score first)
+      return (b.smart_rank || 0) - (a.smart_rank || 0);
+    });
+    
+    return {
+      ...rawRouteData,
+      routes: sortedRoutes
+    };
+  }
+  
   // Common airport lookup (add more as needed)
   const airportNames: Record<string, string> = {
     // Major International Hubs
@@ -212,14 +416,18 @@
     destinationAirportName = airportNames[upperDest] || `Airport ${upperDest}`;
   }
   
+  // Form state variables
+  let isSubmitting = false;
+  let hasError = false;
+  let errorMessage = '';
   let routeData: RouteRankingResponse | null = null;
-  let isLoading = false;
-  let error: string | null = null;
-  let searchedRoute = ''; // To display "Results for LHR -> JFK"
-  let backendHealthy = true;
+  let healthStatus = { status: '', system_initialized: false };
+  let availableDates: string[] = [];
+  
+  // Transform the route data when it's fetched
+  $: transformedRouteData = transformRouteData(routeData);
   
   // Variables for available dates
-  let availableDates: string[] = [];
   let isCheckingDates = false;
   let selectedCachedDate: string | null = null;
   let lastCheckedRoute = ""; // Track the last checked route
@@ -277,16 +485,14 @@
   async function handleSearch() {
     // Basic validation before fetching
     if (!origin || !destination || origin.length !== 3 || destination.length !== 3) {
-      error = 'Please enter valid 3-letter IATA codes for origin and destination.';
+      errorMessage = 'Please enter valid 3-letter IATA codes for origin and destination.';
       routeData = null;
-      searchedRoute = '';
       return;
     }
 
-    isLoading = true;
-    error = null;
+    isSubmitting = true;
+    hasError = false;
     routeData = null;
-    searchedRoute = `${origin.toUpperCase()} → ${destination.toUpperCase()}`; // Set route display string
 
     try {
       // Fetch routes with optional date
@@ -303,14 +509,14 @@
       
       // Check if we received routes
       if (!routeData.routes || routeData.routes.length === 0) {
-        error = `No flight data found for the route ${searchedRoute}. Check airports or try later.`;
+        errorMessage = `No flight data found for the route ${origin.toUpperCase()} → ${destination.toUpperCase()}. Check airports or try later.`;
       }
     } catch (err: unknown) {
       console.error("Fetch error:", err);
-      error = `Failed to fetch rankings: ${err instanceof Error ? err.message : 'Unknown error'}. Is the backend running?`;
+      errorMessage = `Failed to fetch rankings: ${err instanceof Error ? err.message : 'Unknown error'}. Is the backend running?`;
       routeData = null;
     } finally {
-      isLoading = false;
+      isSubmitting = false;
     }
   }
 
@@ -321,9 +527,9 @@
     
     try {
       const healthData = await fetchHealthStatus();
-      backendHealthy = healthData.status === 'ok' && healthData.system_initialized;
+      healthStatus = healthData;
       
-      if (!backendHealthy) {
+      if (!healthStatus.system_initialized) {
         console.warn("Backend system not fully initialized (API key issue?).");
       }
       
@@ -335,7 +541,7 @@
       }
     } catch (e) {
       console.warn("Could not reach backend for health check.");
-      backendHealthy = false;
+      healthStatus = { status: 'unavailable', system_initialized: false };
     }
   });
 </script>
@@ -521,7 +727,7 @@
         </div>
         
         <!-- Backend Status Indicator -->
-        {#if !backendHealthy}
+        {#if !healthStatus.system_initialized}
           <div class="w-full rounded-lg bg-flight-danger/20 border border-flight-danger/40 p-2 text-center mt-0">
             <p class="text-white text-sm">
               ⚠️ Backend service appears to be unavailable. Results may not load correctly.
@@ -533,12 +739,12 @@
         <div class="flex justify-center mt-1">
           <button
             on:click={handleSearch}
-            disabled={isLoading || origin.length !== 3 || destination.length !== 3}
+            disabled={isSubmitting || origin.length !== 3 || destination.length !== 3}
             class="bg-gradient-to-r from-flight-primary to-sky-accent hover:from-sky-accent hover:to-flight-primary text-white font-bold py-2.5 px-8 rounded-lg
                    transition-all duration-300 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed
                    flex items-center gap-2 shadow-lg"
           >
-            {#if isLoading}
+            {#if isSubmitting}
               <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -556,25 +762,25 @@
     </div>
 
     <!-- Simple Loading State -->
-    {#if isLoading}
+    {#if isSubmitting}
       <div class="mt-8">
         <Loader />
       </div>
     {/if}
 
     <!-- Simple Error Message -->
-    {#if error && !isLoading}
+    {#if errorMessage && !isSubmitting}
       <div class="mt-8 w-full max-w-2xl">
-        <ErrorMessage message={error} />
+        <ErrorMessage message={errorMessage} />
       </div>
     {/if}
 
     <!-- Results Section -->
-    {#if routeData && routeData.routes && routeData.routes.length > 0 && !isLoading}
+    {#if routeData && routeData.routes && routeData.routes.length > 0 && !isSubmitting}
       <div class="mt-8 p-6 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg w-full max-w-3xl">
         <div class="flex flex-col md:flex-row justify-between items-center mb-6">
           <h2 class="text-xl font-bold text-white text-center md:text-left">
-            Best Routes: <span class="text-sky-accent">{searchedRoute}</span>
+            Best Routes: <span class="text-sky-accent">{origin.toUpperCase()} → {destination.toUpperCase()}</span>
           </h2>
           
           <!-- Travel date badge -->
@@ -601,11 +807,13 @@
         
         <!-- Route Cards -->
         <div class="space-y-4">
-          {#each routeData.routes as route (route.source_offer_id)}
-            <div>
-              <FlightCard flightData={route} rank={route.rank} />
-            </div>
-          {/each}
+          {#if transformedRouteData && transformedRouteData.routes}
+            {#each transformedRouteData.routes as route, index (index)}
+              <div>
+                <FlightCard flightData={route} rank={route.rank ?? (index + 1)} />
+              </div>
+            {/each}
+          {/if}
         </div>
       </div>
     {/if}

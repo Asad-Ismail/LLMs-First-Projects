@@ -11,7 +11,8 @@ import requests
 import time
 from dotenv import load_dotenv
 
-from ..utils.cache import get_cache_file_path, load_cache, save_to_cache, ROUTE_CACHE_EXPIRY
+# Replace pickle cache import with Supabase client import
+from ..utils.supabase_client import get_flight_route_data, save_flight_route_data, ROUTE_CACHE_EXPIRY
 
 
 def get_flight_numbers_for_route(origin, destination, date=None, max_routes=5, max_connections=2, use_cache=True):
@@ -37,13 +38,12 @@ def get_flight_numbers_for_route(origin, destination, date=None, max_routes=5, m
         # Use provided date
         target_date = date
     
-    # Cache handling
+    # Cache handling using Supabase
     cache_key = f"{origin.upper()}-{destination.upper()}-{target_date}"
-    cache_file = get_cache_file_path(cache_key, subdirectory="routes")
     
     # Check cache first if enabled
     if use_cache:
-        cached_result = load_cache(cache_file, ROUTE_CACHE_EXPIRY)
+        cached_result = get_flight_route_data(origin.upper(), destination.upper(), target_date)
         if cached_result:
             # If we have cached results, we can apply the max_routes filter here
             if 'routes' in cached_result and isinstance(cached_result['routes'], list):
@@ -198,201 +198,226 @@ def get_flight_numbers_for_route(origin, destination, date=None, max_routes=5, m
     }
     
     # Visual indicator for API call start
-    print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 MAKING API CALL FOR FLIGHT SEARCH: {origin} → {destination} ({target_date}) 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
-    print(f"Requesting Flight Offers for {target_date} from {origin} to {destination}...")
-    url = "https://test.api.amadeus.com/v2/shopping/flight-offers"
-    data = None
+    print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 MAKING API CALL FOR AMADEUS FLIGHT SEARCH 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
+    print(f"Searching flights from {origin} to {destination} on {target_date}...")
+    
+    search_url = "https://test.api.amadeus.com/v2/shopping/flight-offers"
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
-        data = response.json()
-        print("Flight Offers Received.")
+        search_response = requests.post(search_url, json=payload, headers=headers, timeout=15)
         # Visual indicator for API call end
-        print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 COMPLETED API CALL FOR FLIGHT SEARCH: {origin} → {destination} 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
+        print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 COMPLETED API CALL FOR AMADEUS FLIGHT SEARCH 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
+        search_response.raise_for_status()
+        search_data = search_response.json()
     except requests.exceptions.RequestException as e:
         # Visual indicator for API call end with error
-        print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 API CALL FAILED FOR FLIGHT SEARCH: {origin} → {destination} 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
-        print(f"Error during flight offers search: {e}")
+        print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 API CALL FAILED FOR AMADEUS FLIGHT SEARCH 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
+        print(f"Error during flight search: {e}")
+        
         if hasattr(e, 'response') and e.response is not None:
             try:
-                print(f"Response body: {e.response.json()}")
+                error_response = e.response.json()
+                print(f"Response error: {error_response}")
+                
+                if "errors" in error_response and len(error_response["errors"]) > 0:
+                    error_title = error_response["errors"][0].get("title", "Unknown error")
+                    error_detail = error_response["errors"][0].get("detail", "No details available")
+                    return {"error": f"Flight search failed: {error_title} - {error_detail}"}
             except json.JSONDecodeError:
                 print(f"Response body (non-JSON): {e.response.text}")
+        
         return {"error": f"Flight search failed: {str(e)}"}
     except json.JSONDecodeError:
         # Visual indicator for API call end with error
-        print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 API CALL FAILED FOR FLIGHT SEARCH: {origin} → {destination} 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
-        print("Error decoding flight offers response.")
-        return {"error": "Flight offers response decode error"}
+        print(f"🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 API CALL FAILED FOR AMADEUS FLIGHT SEARCH 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢")
+        print("Error decoding flight search response.")
+        return {"error": "Flight search response decode error"}
     
-    # --- Filtering and Processing Results ---
+    # --- Process Search Results ---
     
-    unique_routes = {}
-    
-    if not data or 'data' not in data:
-        print("No flight offers found or invalid response structure.")
-        error_result = {
+    # Check if data contains flight offers
+    if 'data' not in search_data or not isinstance(search_data['data'], list):
+        print("No flight offers found in the response.")
+        return {
             "query": {
-                "origin": origin,
-                "destination": destination,
+                "origin": origin.upper(),
+                "destination": destination.upper(),
                 "date": target_date,
-                "filters_applied": [
-                    "Self-Operated Flights Only",
-                    "Unique Routes",
-                    "Smart Ranking (Reliability 40%, Price 35%, Duration 25%)",
-                    f"Selected Top {max_routes}"
-                ],
-                "status": "No valid offers found in API response"
+                "max_connections": max_connections,
+                "max_routes": max_routes
             },
-            "routes": []
+            "routes": [],
+            "message": "No flights found for this route"
+        }
+    
+    flight_offers = search_data['data']
+    print(f"Found {len(flight_offers)} flight offers. Processing...")
+    
+    routes = []
+    for offer in flight_offers:
+        if 'itineraries' not in offer or not offer['itineraries']:
+            continue
+        
+        # We only care about the outbound journey (first itinerary)
+        itinerary = offer['itineraries'][0]
+        
+        if 'segments' not in itinerary or not itinerary['segments']:
+            continue
+        
+        segments = itinerary['segments']
+        segment_count = len(segments)
+        
+        # Create a route object
+        route = {
+            "total_duration": parse_duration(itinerary.get('duration', 'PT0H0M')),
+            "formatted_duration": format_duration(parse_duration(itinerary.get('duration', 'PT0H0M'))),
+            "segments": segment_count,
+            "connections": segment_count - 1,
+            "connection_airports": [],
+            "operating_airlines": [],
+            "operating_flight_numbers": [],
+            "departure_time": None,
+            "arrival_time": None,
         }
         
-        # Cache even empty results to prevent repeated API calls for routes with no data
-        if use_cache:
-            save_to_cache(cache_file, error_result)
-            
-        return error_result
-    
-    print("Processing and Filtering Offers...")
-    for offer in data['data']:
-        if not offer.get('itineraries'):
-            continue
-    
-        itinerary = offer['itineraries'][0]
-        segments = itinerary.get('segments', [])
-    
-        # 1. Check for Self-Operation
-        all_segments_self_operated = True
-        for segment in segments:
-            if not is_self_operated(segment):
-                all_segments_self_operated = False
-                break
-    
-        if not all_segments_self_operated:
-            continue
-    
-        # 2. Identify Unique Route Key & Extract Details
-        route_parts = []
-        operating_airlines = []
-        operating_flight_numbers = []
-        route_path_airports = []
-    
-        if not segments:
-            continue
-    
-        # Add origin airport
-        route_path_airports.append(segments[0].get('departure', {}).get('iataCode', '?'))
-    
-        valid_route = True
-        for i, segment in enumerate(segments):
-            op_details = get_operating_details(segment)
-            departure_code = segment.get('departure', {}).get('iataCode', '?')
-            arrival_code = segment.get('arrival', {}).get('iataCode', '?')
-    
-            if not op_details or departure_code == '?' or arrival_code == '?':
-                valid_route = False
-                print(f"Warning: Skipping segment due to missing details. Offer ID: {offer.get('id')}")
-                break
-    
-            operating_airlines.append(op_details['airline'])
-            operating_flight_numbers.append(op_details['flight_number'])
-            route_parts.append(f"{departure_code}({op_details['airline']})")
-            route_path_airports.append(arrival_code)
-    
-            if i == len(segments) - 1:
-                route_parts.append(arrival_code)
-    
-        if not valid_route:
-            continue
-    
-        route_key = "-".join(route_parts)
-        route_path_str = " -> ".join(route_path_airports)
-    
-        # Extract price and duration
-        try:
-            price_info = offer.get('price', {})
-            current_price = float(price_info.get('total', 'inf'))
-            currency = price_info.get('currency', 'N/A')
-            current_duration_str = itinerary.get('duration')
-            current_duration_minutes = parse_duration(current_duration_str)
-        except (ValueError, TypeError) as e:
-            print(f"Warning: Error parsing price/duration for Offer ID {offer.get('id')}: {e}")
-            continue
-    
-        # 3. Store or Update Unique Offer
-        if route_key not in unique_routes:
-            unique_routes[route_key] = {
-                "route_path": route_path_str,
-                "operating_airline_codes": operating_airlines,
-                "operating_flight_numbers": operating_flight_numbers,
-                "total_duration_str": current_duration_str,
-                "duration_minutes": current_duration_minutes,
-                "price_amount": current_price,
-                "currency": currency,
-                "source_offer_id": offer.get('id')
-            }
-        else:
-            existing_offer = unique_routes[route_key]
-            if current_price < existing_offer['price_amount'] or \
-               (current_price == existing_offer['price_amount'] and current_duration_minutes < existing_offer['duration_minutes']):
-                unique_routes[route_key] = {
-                    "route_path": route_path_str,
-                    "operating_airline_codes": operating_airlines,
-                    "operating_flight_numbers": operating_flight_numbers,
-                    "total_duration_str": current_duration_str,
-                    "duration_minutes": current_duration_minutes,
-                    "price_amount": current_price,
-                    "currency": currency,
-                    "source_offer_id": offer.get('id')
+        # Extract price information from the offer
+        if 'price' in offer and offer['price']:
+            price_info = offer['price']
+            try:
+                # Try to convert to float and format with two decimal places
+                price_value = float(price_info.get('total', '800'))
+                route["price"] = {
+                    "amount": f"{price_value:.2f}",
+                    "currency": price_info.get('currency', 'USD')
                 }
-    
-    # 4. Sort and Select Top Routes
-    sorted_routes = sorted(unique_routes.values(), key=lambda x: (x['price_amount'], x['duration_minutes']))
-    top_routes = sorted_routes[:max_routes]  # Apply the max_routes configuration
-    
-    # 5. Format Output
-    top_routes_output = []
-    carrier_dict = data.get('dictionaries', {}).get('carriers', {})
-    
-    for i, route_info in enumerate(top_routes):
-        primary_op_airline_code = route_info['operating_airline_codes'][0] if route_info['operating_airline_codes'] else 'N/A'
-        primary_op_airline_str = f"{primary_op_airline_code} ({carrier_dict.get(primary_op_airline_code, 'Unknown Name')})"
+            except (ValueError, TypeError):
+                # If conversion fails, use the raw value
+                route["price"] = {
+                    "amount": price_info.get('total', '800'),
+                    "currency": price_info.get('currency', 'USD')
+                }
+        else:
+            # Default price if not available
+            route["price"] = {
+                "amount": "800.00", 
+                "currency": "USD"
+            }
         
-        # Format duration in hours and minutes
-        formatted_duration = format_duration(route_info['duration_minutes'])
+        # Process segments to extract details
+        for i, segment in enumerate(segments):
+            # Get departure and arrival times
+            if i == 0:  # First segment
+                route["departure_time"] = segment.get('departure', {}).get('at')
+                route["first_departure_airport"] = segment.get('departure', {}).get('iataCode')
+            
+            if i == segment_count - 1:  # Last segment
+                route["arrival_time"] = segment.get('arrival', {}).get('at')
+                route["last_arrival_airport"] = segment.get('arrival', {}).get('iataCode')
+            
+            # Add connection airports (excluding origin and final destination)
+            if i < segment_count - 1:  # Not the last segment
+                connection = segment.get('arrival', {}).get('iataCode')
+                if connection:
+                    route["connection_airports"].append(connection)
+            
+            # Add operating details
+            operating = get_operating_details(segment)
+            if operating:
+                airline = operating["airline"]
+                flight_number = operating["flight_number"]
+                
+                if airline and airline not in route["operating_airlines"]:
+                    route["operating_airlines"].append(airline)
+                
+                if flight_number and flight_number not in route["operating_flight_numbers"]:
+                    route["operating_flight_numbers"].append(flight_number)
+        
+        # Format the connection airports into a readable string
+        if route["connection_airports"]:
+            route["connection_string"] = " → ".join(route["connection_airports"])
+        else:
+            route["connection_string"] = "Direct"
+            
+        # For now, select the first airline as the primary
+        if route["operating_airlines"]:
+            route["operating_airline"] = route["operating_airlines"][0]
+        else:
+            route["operating_airline"] = "Unknown"
+        
+        # Add the route to our list
+        routes.append(route)
     
-        top_routes_output.append({
-            "rank": i + 1,
-            "route_path": route_info['route_path'],
-            "operating_airline": primary_op_airline_str,
-            "operating_flight_numbers": route_info['operating_flight_numbers'],
-            "total_duration": formatted_duration,
-            "duration_raw_minutes": route_info['duration_minutes'],
-            "price": {
-                "amount": f"{route_info['price_amount']:.2f}",
-                "currency": route_info['currency']
-            },
-            "source_offer_id": route_info['source_offer_id']
-        })
+    # Sort routes by total duration
+    sorted_routes = sorted(routes, key=lambda x: x["total_duration"])
     
-    # Construct final JSON
-    final_result = {
+    # Add a secondary sort by price to ensure consistent ordering
+    # when multiple routes have the same duration
+    sorted_routes = sorted(sorted_routes, 
+                           key=lambda x: (
+                               x["total_duration"],  # Primary: duration (lowest first)
+                               float(x.get("price", {}).get("amount", "9999")),  # Secondary: price (lowest first) 
+                               "-".join(x.get("operating_flight_numbers", []))  # Tertiary: flight numbers (for stability)
+                           ))
+    
+    # Limit to the requested number of routes
+    top_routes = sorted_routes[:max_routes]
+    
+    # Build the final result
+    result = {
         "query": {
-            "origin": origin,
-            "destination": destination,
+            "origin": origin.upper(),
+            "destination": destination.upper(),
             "date": target_date,
             "filters_applied": [
-                "Self-Operated Flights Only",
-                "Unique Routes",
-                "Smart Ranking (Reliability 40%, Price 35%, Duration 25%)",
+                f"Max {max_connections} connections",
+                f"Sorted by shortest duration",
                 f"Selected Top {max_routes}"
             ]
         },
-        "routes": top_routes_output
+        "routes": top_routes,
+        "count": len(top_routes),
+        "retrieved_at": datetime.now().isoformat()
     }
     
-    # Cache the results if caching is enabled
-    if use_cache:
-        save_to_cache(cache_file, final_result)
+    # Save to Supabase
+    if top_routes:
+        save_flight_route_data(origin.upper(), destination.upper(), target_date, result)
     
-    return final_result
+    return result
+
+
+def extract_flight_numbers_for_route(origin_iata: str, destination_iata: str) -> list:
+    """
+    Extract all flight numbers that operate on a specific route based on cached results.
+    
+    Args:
+        origin_iata: Origin airport IATA code (e.g., "AMS")
+        destination_iata: Destination airport IATA code (e.g., "LHE")
+        
+    Returns:
+        List of unique flight numbers
+    """
+    # We need to get this from Supabase
+    from ..utils.supabase_client import get_cached_dates_for_route
+    
+    flight_numbers = []
+    
+    # Get all cached dates for this route
+    dates = get_cached_dates_for_route(origin_iata, destination_iata)
+    
+    if not dates:
+        print(f"No cached data found for route {origin_iata}-{destination_iata}")
+        return []
+    
+    # Use the most recent date
+    most_recent_date = sorted(dates)[-1]
+    route_data = get_flight_route_data(origin_iata, destination_iata, most_recent_date)
+    
+    if route_data and 'routes' in route_data:
+        for route in route_data['routes']:
+            if 'operating_flight_numbers' in route:
+                flight_numbers.extend(route['operating_flight_numbers'])
+    
+    # Remove duplicates
+    unique_flight_numbers = list(set(flight_numbers))
+    
+    return unique_flight_numbers

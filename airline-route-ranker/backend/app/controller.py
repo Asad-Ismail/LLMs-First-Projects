@@ -226,10 +226,18 @@ class FlightAnalysisSystem:
                 duration_score = 100 - ((duration - min_duration) / duration_range * 100) if duration_range > 0 else 50
                 reliability_score = reliability  # Already on 0-100 scale
                 
-                # Calculate weighted smart rank (adjust weights as needed)
-                # 35% reliability, 30% price, 35% duration
+                # Apply consistent rounding to the normalized scores
+                price_score = round(price_score, 1)
+                duration_score = round(duration_score, 1)
+                reliability_score = round(reliability_score, 1) if reliability_score is not None else 0
+                
+                # Calculate weighted smart rank with exact weights to ensure consistency
+                # 35% reliability, 30% price, 35% duration 
                 smart_rank = (reliability_score * 0.35) + (price_score * 0.30) + (duration_score * 0.35)
                 route["smart_rank"] = round(smart_rank, 1)
+                
+                # Debug log to help diagnose ranking issues
+                print(f"Route {route.get('operating_flight_numbers')}: R={reliability_score} P={price_score} D={duration_score} Smart={route['smart_rank']}")
         
         # Sort routes by smart rank (highest first)
         sorted_routes = sorted(

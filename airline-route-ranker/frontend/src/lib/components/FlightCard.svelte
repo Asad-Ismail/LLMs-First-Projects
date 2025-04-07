@@ -130,7 +130,7 @@
       <span class="whitespace-nowrap font-medium">${flightData.price?.amount}</span>
     </div>
     <div class="text-xs text-gray-500 mt-1">
-      Flights: {flightData.operating_flight_numbers?.join(', ')}
+      <span class="font-medium">Flights:</span> {flightData.operating_flight_numbers?.join(', ')}
     </div>
   </div>
 

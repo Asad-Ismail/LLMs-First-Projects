@@ -76,6 +76,13 @@ export interface RouteData {
   source_offer_id: string;
   reliability_score: number;
   reliability_data: FlightReliabilityData[];
+  connection_airports?: string[];
+  connection_string?: string;
+  segments?: number;
+  connections?: number;
+  formatted_duration?: string;
+  route_data?: any; // Contains additional route data that might be in string format
+  smart_rank?: number; // Overall smart ranking score (considering reliability, price, duration)
 }
 
 // Query information

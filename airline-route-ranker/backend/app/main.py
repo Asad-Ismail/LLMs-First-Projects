@@ -13,6 +13,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from .controller import FlightAnalysisSystem, extract_flight_numbers_for_route
 from .utils.email import send_contact_email
+from .utils.supabase_client import supabase
 
 # Load environment variables
 load_dotenv()
@@ -167,6 +168,37 @@ class ContactForm(BaseModel):
 async def health_check():
     """Simple health check endpoint."""
     return {"status": "ok", "system_initialized": flight_system is not None}
+
+
+@app.post("/api/admin/initialize-db")
+async def initialize_db(request: Request):
+    """
+    Initialize the Supabase database with the schema.
+    This endpoint requires admin API key.
+    
+    Note: This should only be used once to set up the database or during development.
+    """
+    # Validate admin API key
+    api_key = request.headers.get("X-API-Key")
+    if not api_key or api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing admin API key")
+    
+    try:
+        # Import the setup module
+        from supabase.setup_script import main as setup_db
+        
+        # Run the setup
+        success = setup_db()
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Database initialization failed. Check server logs.")
+            
+        return {
+            "status": "success", 
+            "message": "Supabase database initialized successfully."
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database initialization error: {str(e)}")
 
 
 @app.post("/api/contact")
