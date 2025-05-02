@@ -3,6 +3,9 @@
   import { supabase } from '$lib/supabase';
   import type { UserProfile } from '$lib/supabase';
   import { goto } from '$app/navigation';
+  import { fetchRouteRankings } from '$lib/api';
+  import FlightCard from '$lib/components/FlightCard.svelte';
+  import Loader from '$lib/components/Loader.svelte';
   
   interface SavedRoute {
     id: string;
@@ -33,6 +36,12 @@
   let loading = true;
   let creditsLoading = true;
   let credits = 0;
+  
+  // Search results state
+  let selectedSearchResults: any = null;
+  let selectedSearchRoute: string | null = null;
+  let isLoadingSearchResults = false;
+  let searchResultsError: string | null = null;
   
   onMount(async () => {
     await loadProfile();
@@ -117,6 +126,71 @@
     const dateParam = date ? `&date=${date}` : '';
     goto(`/?from=${origin}&to=${destination}${dateParam}`);
   }
+  
+  // Function to show search results for a specific search history item
+  async function showSearchResults(search: SearchHistory): Promise<void> {
+    // Clear previous results and set loading state
+    selectedSearchResults = null;
+    searchResultsError = null;
+    isLoadingSearchResults = true;
+    
+    try {
+      // Set the selected route for UI display
+      selectedSearchRoute = `${search.origin_iata} → ${search.destination_iata}`;
+      
+      // Fetch route rankings from the API
+      const results = await fetchRouteRankings(
+        search.origin_iata,
+        search.destination_iata,
+        search.search_date || undefined
+      );
+      
+      // Store the results
+      selectedSearchResults = results;
+      
+      // Scroll to the results section
+      setTimeout(() => {
+        const resultsSection = document.getElementById('search-results-section');
+        if (resultsSection) {
+          resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    } catch (error) {
+      console.error('Error fetching search results:', error);
+      searchResultsError = error instanceof Error ? error.message : 'Failed to load search results';
+    } finally {
+      isLoadingSearchResults = false;
+    }
+  }
+  
+  // Helper function to transform raw route data (copied from main page)
+  function transformRouteData(rawRouteData: any): any {
+    if (!rawRouteData || !rawRouteData.routes) return rawRouteData;
+    
+    // Transform each route with necessary formatting
+    const transformedRoutes = rawRouteData.routes.map((route: any, index: number) => {
+      return {
+        ...route,
+        rank: route.rank || (index + 1)
+      };
+    });
+    
+    // Sort routes by rank
+    const sortedRoutes = transformedRoutes.sort((a: any, b: any) => {
+      if (a.rank !== b.rank) {
+        return a.rank - b.rank;
+      }
+      return (b.smart_rank || 0) - (a.smart_rank || 0);
+    });
+    
+    return {
+      ...rawRouteData,
+      routes: sortedRoutes
+    };
+  }
+  
+  // Compute transformed route data
+  $: transformedSearchResults = transformRouteData(selectedSearchResults);
 </script>
 
 <div class="container mx-auto max-w-6xl px-4 py-8">
@@ -247,7 +321,7 @@
   </div>
   
   <!-- Recent Search History -->
-  <div>
+  <div class="mb-8">
     <h2 class="text-xl font-bold text-white mb-4 flex items-center">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-sky-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -279,12 +353,12 @@
                   <td class="px-4 py-3 whitespace-nowrap">
                     <div class="text-white/60 text-sm">{formatDate(search.created_at)}</div>
                   </td>
-                  <td class="px-4 py-3 whitespace-nowrap text-right">
+                  <td class="px-4 py-3 whitespace-nowrap text-right space-x-3">
                     <button 
                       class="text-sky-accent hover:text-white transition-colors"
-                      on:click={() => goToRoute(search.origin_iata, search.destination_iata, search.search_date)}
+                      on:click={() => showSearchResults(search)}
                     >
-                      Search Again
+                      View Results
                     </button>
                   </td>
                 </tr>
@@ -300,4 +374,72 @@
       </div>
     {/if}
   </div>
+  
+  <!-- Search Results Section -->
+  {#if isLoadingSearchResults || selectedSearchResults || searchResultsError}
+    <div id="search-results-section" class="mt-8 mb-8">
+      <h2 class="text-xl font-bold text-white mb-4 flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-sky-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        Search Results
+      </h2>
+      
+      {#if isLoadingSearchResults}
+        <div class="p-6 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 shadow-lg">
+          <div class="flex flex-col items-center">
+            <Loader />
+            <p class="text-white/80 mt-4">Loading search results...</p>
+          </div>
+        </div>
+      {:else if searchResultsError}
+        <div class="p-6 bg-white/10 backdrop-blur-md rounded-xl border border-red-400/20 shadow-lg">
+          <div class="text-center text-white/80">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto text-red-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p class="font-medium mb-1">Error loading search results</p>
+            <p class="text-sm">{searchResultsError}</p>
+          </div>
+        </div>
+      {:else if transformedSearchResults && transformedSearchResults.routes && transformedSearchResults.routes.length > 0}
+        <div class="p-6 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 shadow-lg">
+          <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+            <h3 class="text-lg font-bold text-white text-center md:text-left mb-3 md:mb-0">
+              Best Routes: <span class="text-sky-accent">{selectedSearchRoute}</span>
+            </h3>
+            
+            <!-- Date badge if available -->
+            {#if transformedSearchResults.query.date}
+              <div class="bg-white/10 backdrop-blur-sm rounded-full px-4 py-1.5 text-sm text-white flex items-center gap-2 border border-white/10 shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-sky-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span>{new Date(transformedSearchResults.query.date).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}</span>
+              </div>
+            {/if}
+          </div>
+          
+          <!-- Flight cards -->
+          <div class="space-y-4">
+            {#each transformedSearchResults.routes as route, index}
+              <div>
+                <FlightCard flightData={route} rank={route.rank ?? (index + 1)} />
+              </div>
+            {/each}
+          </div>
+        </div>
+      {:else}
+        <div class="p-6 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 shadow-lg">
+          <div class="text-center text-white/80">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto text-white/60 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p class="font-medium mb-1">No flight routes found</p>
+            <p class="text-sm">Try searching again with different parameters</p>
+          </div>
+        </div>
+      {/if}
+    </div>
+  {/if}
 </div> 
