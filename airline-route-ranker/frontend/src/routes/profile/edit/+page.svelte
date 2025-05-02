@@ -172,8 +172,8 @@
           
           <!-- Email -->
           <div>
-            <label class="block text-white font-medium mb-2">Email Address</label>
-            <div class="w-full p-3 bg-white/5 border border-white/10 rounded-md text-white/80">
+            <label for="email" class="block text-white font-medium mb-2">Email Address</label>
+            <div id="email" class="w-full p-3 bg-white/5 border border-white/10 rounded-md text-white/80">
               {profile?.email}
               <span class="text-xs ml-2 text-white/60">(cannot be changed)</span>
             </div>

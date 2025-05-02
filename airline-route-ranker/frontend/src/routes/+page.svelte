@@ -6,10 +6,16 @@
   import Loader from '$lib/components/Loader.svelte';
   import ErrorMessage from '$lib/components/ErrorMessage.svelte';
   import { fetchRouteRankings, fetchHealthStatus, fetchAvailableDates, type RouteRankingResponse, type RouteData } from '$lib/api';
-  import { recordSearch } from '$lib/supabase';
+  import { recordSearch, getCurrentUser, doesSearchRequireCredit, hasEnoughCredits, useCredit } from '$lib/supabase';
   import Header from '$lib/components/Navigation/Header.svelte';
   import StarryBackground from '$lib/components/StarryBackground.svelte';
 
+  // State for credit system
+  let isLoggedIn = false;
+  let needsCredits = false;
+  let hasCredits = false;
+  let searchRequiresCredit = false;
+  
   // Prefill origin and destination with default values
   let origin = 'AMS';
   let destination = 'LHE';
@@ -485,12 +491,69 @@
     }
   }
 
+  // Check user authentication status
+  onMount(async () => {
+    const user = await getCurrentUser();
+    isLoggedIn = !!user;
+    
+    if (isLoggedIn) {
+      hasCredits = await hasEnoughCredits(1);
+    }
+    
+    try {
+      const healthData = await fetchHealthStatus();
+      healthStatus = healthData;
+      
+      if (!healthStatus.system_initialized) {
+        console.warn("Backend system not fully initialized (API key issue?).");
+      }
+      
+      // If we already have valid airport codes, check for dates
+      if (origin?.length === 3 && destination?.length === 3) {
+        const routeKey = `${origin}-${destination}`;
+        lastCheckedRoute = routeKey;
+        checkAvailableDates(origin, destination);
+      }
+    } catch (e) {
+      console.warn("Could not reach backend for health check.");
+      healthStatus = { status: 'unavailable', system_initialized: false };
+    }
+  });
+
+  // Modify the handleSearch function to check and use credits if needed
   async function handleSearch() {
     // Basic validation before fetching
     if (!origin || !destination || origin.length !== 3 || destination.length !== 3) {
       errorMessage = 'Please enter valid 3-letter IATA codes for origin and destination.';
       routeData = null;
       return;
+    }
+
+    // Check if this search will require a credit (not in cache)
+    if (isLoggedIn) {
+      searchRequiresCredit = await doesSearchRequireCredit(
+        origin.toUpperCase(), 
+        destination.toUpperCase(), 
+        travelDate
+      );
+      
+      // If requires credit, check if user has enough
+      if (searchRequiresCredit) {
+        hasCredits = await hasEnoughCredits(1);
+        
+        if (!hasCredits) {
+          errorMessage = 'You need a credit to perform this search. Please purchase credits to continue.';
+          needsCredits = true;
+          return;
+        }
+      }
+    } else if (!isSubmitting) {
+      // If not logged in, check if search would require credit
+      searchRequiresCredit = await doesSearchRequireCredit(
+        origin.toUpperCase(), 
+        destination.toUpperCase(), 
+        travelDate
+      );
     }
 
     isSubmitting = true;
@@ -513,22 +576,33 @@
       // Check if we received routes
       if (!routeData.routes || routeData.routes.length === 0) {
         errorMessage = `No flight data found for the route ${origin.toUpperCase()} → ${destination.toUpperCase()}. Check airports or try later.`;
-      }
-      
-      // Record search history for logged-in users
-      try {
-        await recordSearch(
-          origin.toUpperCase(),
-          destination.toUpperCase(),
-          travelDate,
-          { 
-            searchDate: new Date().toISOString(),
-            routesFound: result.routes?.length || 0
+      } else {
+        // Record search history for logged-in users
+        try {
+          const searchData = await recordSearch(
+            origin.toUpperCase(),
+            destination.toUpperCase(),
+            travelDate,
+            { 
+              searchDate: new Date().toISOString(),
+              routesFound: result.routes?.length || 0
+            }
+          );
+          
+          // If search required a credit and was successful, use a credit
+          if (isLoggedIn && searchRequiresCredit && searchData) {
+            await useCredit(
+              searchData.id,
+              `Search: ${origin.toUpperCase()} to ${destination.toUpperCase()} on ${travelDate || 'any date'}`
+            );
+            
+            // Update credit status
+            hasCredits = await hasEnoughCredits(1);
           }
-        );
-      } catch (err) {
-        // Non-critical error, just log it
-        console.warn('Failed to record search history:', err);
+        } catch (err) {
+          // Non-critical error, just log it
+          console.warn('Failed to record search history:', err);
+        }
       }
     } catch (err: unknown) {
       console.error("Fetch error:", err);
@@ -538,31 +612,6 @@
       isSubmitting = false;
     }
   }
-
-  // Check backend health on load and initialize reactive dependencies
-  onMount(async () => {
-    // Set mounted flag to true
-    isMounted = true;
-    
-    try {
-      const healthData = await fetchHealthStatus();
-      healthStatus = healthData;
-      
-      if (!healthStatus.system_initialized) {
-        console.warn("Backend system not fully initialized (API key issue?).");
-      }
-      
-      // If we already have valid airport codes, check for dates
-      if (origin?.length === 3 && destination?.length === 3) {
-        const routeKey = `${origin}-${destination}`;
-        lastCheckedRoute = routeKey;
-        checkAvailableDates(origin, destination);
-      }
-    } catch (e) {
-      console.warn("Could not reach backend for health check.");
-      healthStatus = { status: 'unavailable', system_initialized: false };
-    }
-  });
 </script>
 
 <div class="relative min-h-screen bg-sky-dark bg-[url('/starry-sky.svg')] bg-cover bg-fixed bg-opacity-90 overflow-hidden">
@@ -572,8 +621,89 @@
   <!-- Use our reusable header component -->
   <Header currentPage="home" />
   
+  <!-- Sign-up Banner (shown only to non-logged-in users) -->
+  {#if !isLoggedIn}
+    <div class="bg-gradient-to-r from-sky-accent/90 to-flight-primary/90 text-white py-3 px-4 shadow-md mb-4 backdrop-blur-sm">
+      <div class="container mx-auto">
+        <div class="flex flex-col md:flex-row items-center justify-between">
+          <div class="flex items-center mb-3 md:mb-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="font-bold text-sm md:text-base">Sign up for FREE and get 2 search credits! Additional credits just $1.99 for 5.</span>
+          </div>
+          <a href="/signup" class="bg-white hover:bg-sky-50 text-sky-dark font-bold py-2 px-6 rounded-full transition-colors shadow-md">
+            Create Account
+          </a>
+        </div>
+      </div>
+    </div>
+  {/if}
+  
   <!-- Main Content with Centered Search Form -->
-  <div class="container mx-auto p-4 flex flex-col items-center justify-start pt-12 relative z-10" style="min-height: calc(100vh - 80px);">
+  <div class="container mx-auto p-4 flex flex-col items-center justify-start pt-6 md:pt-12 relative z-10" style="min-height: calc(100vh - 80px);">
+    <!-- Credit needed banner (when search requires credit but user doesn't have any) -->
+    {#if needsCredits}
+      <div class="mb-8 w-full max-w-2xl bg-flight-warning/20 border border-flight-warning text-white rounded-lg p-4 shadow-lg">
+        <h3 class="font-bold text-lg mb-2 flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-flight-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Credits Required
+        </h3>
+        <p class="mb-3">
+          This search requires a credit since it's not in our cache. Purchase credits to access unique flight reliability data.
+        </p>
+        <div class="flex justify-end">
+          <a href="/profile/credits" class="bg-flight-warning hover:bg-amber-500 text-white font-bold py-2 px-4 rounded transition-colors">
+            Purchase Credits
+          </a>
+        </div>
+      </div>
+    {/if}
+    
+    <!-- Search requires credit notice (for logged in users with credits) -->
+    {#if isLoggedIn && searchRequiresCredit && !isSubmitting && !needsCredits && !routeData}
+      <div class="mb-8 w-full max-w-2xl bg-sky-accent/20 border border-sky-accent/40 text-white rounded-lg p-4">
+        <p class="text-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          This search will use 1 credit as it's not in our cached database.
+        </p>
+      </div>
+    {/if}
+    
+    <!-- Search will require signup notice (for non-logged in users) -->
+    {#if !isLoggedIn && searchRequiresCredit && !isSubmitting && !routeData}
+      <div class="mb-8 w-full max-w-2xl bg-sky-accent/20 border border-sky-accent/40 text-white rounded-lg p-4">
+        <p class="mb-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          This route isn't in our cache. Sign up to use your free credits and access unique flight data!
+        </p>
+        <div class="flex justify-end">
+          <a href="/signup" class="bg-flight-success hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-sm transition-colors">
+            Sign Up for Free
+          </a>
+        </div>
+      </div>
+    {/if}
+    
+    <!-- Credit Balance (for logged in users) -->
+    {#if isLoggedIn}
+      <div class="mb-4 w-full max-w-2xl flex justify-end">
+        <div class="bg-white/10 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs text-white flex items-center gap-2 border border-white/10 shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Credits: {hasCredits ? '✓ Available' : '⚠️ None'}</span>
+          <a href="/profile/credits" class="text-sky-accent hover:underline ml-1">Get More</a>
+        </div>
+      </div>
+    {/if}
+    
     <!-- Simplified Tagline Section - More Focused -->
     <div class="text-center mb-10 max-w-2xl px-4 animate-[fadeIn_0.8s_ease-in-out]" style="animation: fadeIn 0.8s ease-in-out;">
       <h2 class="text-white text-2xl md:text-4xl font-medium mb-4 text-shadow-md">
@@ -743,6 +873,19 @@
             {/if}
           </button>
         </div>
+        
+        <!-- Credit Status (moved here) -->
+        {#if isLoggedIn}
+          <div class="flex justify-center mt-3">
+            <div class="bg-white/10 hover:bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs text-white flex items-center gap-2 border border-white/10 shadow-sm transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Credits: {hasCredits ? '✓ Available' : '⚠️ None'}</span>
+              <a href="/profile/credits" class="text-sky-accent hover:underline ml-1">Get More</a>
+            </div>
+          </div>
+        {/if}
       </div>
     </div>
 
