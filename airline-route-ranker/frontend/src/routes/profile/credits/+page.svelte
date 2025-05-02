@@ -105,38 +105,11 @@
       const { data, error } = await supabase
         .from('credit_packages')
         .select('*')
-        .order('credits', { ascending: true });
+        .order('sort_order', { ascending: true });
         
       if (error) throw error;
       
       creditPackages = data || [];
-      
-      // For demo purposes, if no packages exist in DB, create mock packages
-      if (creditPackages.length === 0) {
-        creditPackages = [
-          {
-            id: '1',
-            name: 'Basic',
-            credits: 5,
-            price: 1.99,
-            is_best_value: false
-          },
-          {
-            id: '2',
-            name: 'Standard',
-            credits: 15,
-            price: 4.99,
-            is_best_value: true
-          },
-          {
-            id: '3',
-            name: 'Premium',
-            credits: 50,
-            price: 14.99,
-            is_best_value: false
-          }
-        ];
-      }
       
       if (creditPackages.length > 0) {
         selectedPackage = creditPackages[0].id;

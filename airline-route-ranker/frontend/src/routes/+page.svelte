@@ -541,10 +541,12 @@
 
   // Modify the handleSearch function to check and use credits if needed
   async function handleSearch() {
+    // Clear previous results immediately when initiating a new search
+    routeData = null;
+    
     // Basic validation before fetching
     if (!origin || !destination || origin.length !== 3 || destination.length !== 3) {
       errorMessage = 'Please enter valid 3-letter IATA codes for origin and destination.';
-      routeData = null;
       return;
     }
 
@@ -710,11 +712,9 @@
       </div>
     {/if}
     
-    <!-- Credit Balance (for logged in users) -->
+    <!-- Remove the credit balance at the top -->
     {#if isLoggedIn}
-      <div class="mb-4 w-full max-w-2xl flex justify-end">
-        <!-- Credit status display removed from here -->
-      </div>
+      <!-- Empty div to replace the previous credit display -->
     {/if}
     
     <!-- Simplified Tagline Section - More Focused -->
@@ -896,19 +896,6 @@
             {/if}
           </button>
         </div>
-        
-        <!-- Credit Status (in flight search area) -->
-        {#if isLoggedIn}
-          <div class="flex justify-center mt-3">
-            <div class="bg-white/10 hover:bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs text-white flex items-center gap-2 border border-white/10 shadow-sm transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>Credits: {hasCredits ? '✓ Available' : '⚠️ None'}</span>
-              <a href="/profile/credits" class="text-sky-accent hover:underline ml-1">Get More - Only $0.99 for 2!</a>
-            </div>
-          </div>
-        {/if}
       </div>
     </div>
 
@@ -965,6 +952,19 @@
               </div>
             {/each}
           {/if}
+        </div>
+      </div>
+    {/if}
+
+    <!-- Credit Status (at the bottom of the page) -->
+    {#if isLoggedIn && !routeData}
+      <div class="mt-16 flex justify-center">
+        <div class="bg-white/15 hover:bg-white/20 backdrop-blur-md rounded-full px-5 py-2 text-sm text-white flex items-center gap-3 border border-white/20 shadow-lg transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="font-medium">Credits: {hasCredits ? '✓ Available' : '⚠️ None'}</span>
+          <a href="/profile/credits" class="text-sky-accent hover:text-white ml-1 font-bold">Get More - Only $0.99 for 2!</a>
         </div>
       </div>
     {/if}
