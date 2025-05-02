@@ -78,7 +78,6 @@ declare module '$env/static/private' {
 	export const DISPLAY: string;
 	export const LANG: string;
 	export const XDG_CURRENT_DESKTOP: string;
-	export const CONDA_PREFIX_1: string;
 	export const XMODIFIERS: string;
 	export const XDG_SESSION_DESKTOP: string;
 	export const XAUTHORITY: string;
@@ -200,7 +199,6 @@ declare module '$env/dynamic/private' {
 		DISPLAY: string;
 		LANG: string;
 		XDG_CURRENT_DESKTOP: string;
-		CONDA_PREFIX_1: string;
 		XMODIFIERS: string;
 		XDG_SESSION_DESKTOP: string;
 		XAUTHORITY: string;
