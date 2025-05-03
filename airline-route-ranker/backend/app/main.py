@@ -1,7 +1,7 @@
 """
 FastAPI backend for the Airline Route Ranker application.
 """
-from fastapi import FastAPI, HTTPException, Path, Query, Body, Request, Depends
+from fastapi import FastAPI, HTTPException, Path, Query, Body, Request, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import os
@@ -13,7 +13,8 @@ from pydantic import BaseModel, EmailStr, Field
 
 from .controller import FlightAnalysisSystem, extract_flight_numbers_for_route
 from .utils.email import send_contact_email
-from .utils.supabase_client import supabase
+from .utils.supabase_client import supabase, supabase_admin
+from .utils.payments import create_payment_link, handle_webhook_event, get_db_client
 
 # Load environment variables
 load_dotenv()
@@ -114,8 +115,8 @@ async def verify_api_key(request: Request, call_next):
             headers=cors_headers
         )
     
-    # Skip authentication for health endpoint
-    if request.url.path == "/api/health":
+    # Skip authentication for health endpoint and webhook endpoint
+    if request.url.path == "/api/health" or request.url.path == "/api/payment/webhook":
         response = await call_next(request)
         # Add CORS headers to the response
         for key, value in cors_headers.items():
@@ -427,3 +428,184 @@ async def get_available_cached_dates(
     except Exception as e:
         print(f"Error retrieving cached dates for {origin_iata}-{destination_iata}: {e}")
         return {"available_dates": []}
+
+# Payment model for validation
+class PaymentRequest(BaseModel):
+    package_id: str = Field(..., description="The ID of the credit package")
+    user_id: str = Field(..., description="The ID of the user making the purchase")
+    success_url: Optional[str] = Field(None, description="URL to redirect after successful payment")
+    cancel_url: Optional[str] = Field(None, description="URL to redirect after cancelled payment")
+
+
+@app.post("/api/payment/create-link")
+async def create_payment(
+    payment: PaymentRequest = Body(...),
+    x_api_key: str = Header(None, alias="X-API-Key")
+):
+    """
+    Create a Stripe payment link for purchasing credits.
+    
+    Args:
+        payment: Payment request with package and user details
+        
+    Returns:
+        Payment link URL and session ID
+    """
+    try:
+        # Validate API key
+        if not x_api_key or x_api_key != API_KEY:
+            raise HTTPException(status_code=401, detail="Invalid or missing API key")
+        
+        # Create payment link
+        payment_data = await create_payment_link(
+            package_id=payment.package_id,
+            user_id=payment.user_id,
+            success_url=payment.success_url,
+            cancel_url=payment.cancel_url
+        )
+        
+        return payment_data
+    
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print(f"Error creating payment link: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create payment link")
+
+
+@app.post("/api/payment/webhook")
+async def webhook(
+    request: Request,
+    stripe_signature: str = Header(None, alias="Stripe-Signature")
+):
+    """
+    Handle Stripe webhook events for payment processing.
+    
+    Args:
+        request: The raw HTTP request
+        stripe_signature: Stripe signature header
+        
+    Returns:
+        Processing result
+    """
+    try:
+        print(f"🔔 Received webhook request with signature: {stripe_signature[:10]}...")
+        
+        # Get the raw request payload
+        payload = await request.body()
+        
+        # Validate signature
+        if not stripe_signature:
+            print("❌ Missing Stripe signature header")
+            raise HTTPException(status_code=400, detail="Missing Stripe signature")
+        
+        # Process the webhook
+        print("⏳ Processing webhook event...")
+        result = await handle_webhook_event(payload, stripe_signature)
+        print(f"✅ Webhook processed: {result}")
+        
+        return result
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error processing webhook: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Webhook processing error")
+
+@app.get("/api/payment/confirm-success")
+async def confirm_success(
+    user_id: str = Query(..., description="User ID to update credits for"),
+    session_id: str = Query(..., description="Stripe session ID from the successful payment"),
+    credits: int = Query(5, description="Number of credits to add")
+):
+    """
+    Manual confirmation endpoint for successful payments.
+    Use this as a fallback if webhooks aren't triggering proper credit updates.
+    """
+    try:
+        # Get admin client for database operations
+        db = get_db_client()
+        
+        print(f"🚨 MANUAL PAYMENT CONFIRMATION: User {user_id}, Session {session_id}, Credits {credits}")
+        
+        # 1. Check if payment was already processed
+        payment_result = db.table('user_payment_transactions').select('*').eq('provider_transaction_id', session_id).execute()
+        
+        if payment_result.data and len(payment_result.data) > 0:
+            # Payment already processed
+            return {
+                "status": "already_processed",
+                "message": "This payment was already processed",
+                "payment": payment_result.data[0]
+            }
+        
+        # 2. Get current credits
+        profile_result = db.table('user_profiles').select('credits, total_credits_purchased').eq('id', user_id).execute()
+        
+        if not profile_result.data or len(profile_result.data) == 0:
+            return {"status": "error", "message": f"User not found: {user_id}"}
+        
+        profile = profile_result.data[0]
+        current_credits = profile.get('credits', 0)
+        total_purchased = profile.get('total_credits_purchased', 0)
+        
+        print(f"💰 Current credits: {current_credits}, Adding: {credits}")
+        
+        # 3. Insert payment record
+        payment_data = {
+            'user_id': user_id,
+            'amount': credits * 0.40,  # Approximate dollar value
+            'currency': 'USD',
+            'status': 'completed',
+            'provider': 'stripe',
+            'provider_transaction_id': session_id,
+            'credits_purchased': credits,
+            'package_name': 'Manual confirmation'
+        }
+        
+        payment_result = db.table('user_payment_transactions').insert(payment_data).execute()
+        
+        if not payment_result.data:
+            return {"status": "error", "message": "Failed to record payment transaction"}
+            
+        payment_id = payment_result.data[0]['id']
+        
+        # 4. Insert credit transaction
+        credit_data = {
+            'user_id': user_id,
+            'amount': credits,
+            'transaction_type': 'purchase',
+            'description': f"Purchased {credits} credits (manual confirmation)",
+            'payment_id': payment_id
+        }
+        
+        credit_result = db.table('user_credit_transactions').insert(credit_data).execute()
+        
+        if not credit_result.data:
+            return {"status": "error", "message": "Failed to record credit transaction"}
+        
+        # 5. Update user's credit balance
+        update_data = {
+            'credits': current_credits + credits,
+            'total_credits_purchased': total_purchased + credits
+        }
+        
+        update_result = db.table('user_profiles').update(update_data).eq('id', user_id).execute()
+        
+        if not update_result.data:
+            return {"status": "error", "message": "Failed to update credit balance"}
+            
+        return {
+            "status": "success", 
+            "message": f"Manually added {credits} credits to user {user_id}",
+            "previous_credits": current_credits,
+            "new_credits": current_credits + credits
+        }
+        
+    except Exception as e:
+        print(f"🔧 MANUAL CONFIRMATION ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}

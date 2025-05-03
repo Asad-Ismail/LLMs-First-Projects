@@ -13,26 +13,27 @@ from supabase import create_client
 # Load environment variables
 load_dotenv()
 
-# Get Supabase credentials
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+# Main Supabase client
+supabase_url = os.getenv("SUPABASE_URL")
+supabase_key = os.getenv("SUPABASE_KEY")
+supabase = create_client(supabase_url, supabase_key)
+
+# Service client with admin privileges for payment processing
+supabase_service_key = os.getenv("SUPABASE_SERVICE_KEY")
+supabase_admin = None
+
+if supabase_service_key:
+    try:
+        supabase_admin = create_client(supabase_url, supabase_service_key)
+        print("✅ Supabase admin client initialized successfully")
+    except Exception as e:
+        print(f"⚠️ Warning: Failed to initialize Supabase admin client: {e}")
+else:
+    print("⚠️ Warning: SUPABASE_SERVICE_KEY not found, admin operations will fail")
 
 # Cache configuration (used for logging purposes only)
 ROUTE_CACHE_EXPIRY = 35 * 24 * 60 * 60  # 35 days in seconds
 FLIGHT_CACHE_EXPIRY = 35 * 24 * 60 * 60  # 35 days in seconds
-
-# Initialize Supabase client
-if not SUPABASE_URL or not SUPABASE_KEY:
-    print("❌ Error: SUPABASE_URL and SUPABASE_KEY environment variables must be set.")
-    supabase = None
-else:
-    try:
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-        print("✅ Supabase client initialized successfully.")
-    except Exception as e:
-        print(f"❌ Error initializing Supabase client: {e}")
-        supabase = None
-
 
 def get_flight_route_data(origin: str, destination: str, date: str) -> Optional[Dict[str, Any]]:
     """

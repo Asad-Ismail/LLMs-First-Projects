@@ -3,6 +3,7 @@
   import { supabase, type CreditTransaction, type PaymentTransaction } from '$lib/supabase';
   import { goto } from '$app/navigation';
   import StarryBackground from '$lib/components/StarryBackground.svelte';
+  import { page } from '$app/stores';
 
   // Define interface for credit package
   interface CreditPackage {
@@ -27,7 +28,23 @@
   let successMessage = '';
   let selectedPackage: string | null = null;
   
+  // API details
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const API_KEY = import.meta.env.VITE_API_KEY || '';
+  
   onMount(async () => {
+    // Check URL parameters for payment status
+    const urlParams = $page.url.searchParams;
+    const success = urlParams.get('success');
+    const canceled = urlParams.get('canceled');
+    const sessionId = urlParams.get('session_id');
+    
+    if (success === 'true' && sessionId) {
+      successMessage = 'Payment successful! Your credits have been added to your account.';
+    } else if (canceled === 'true') {
+      errorMessage = 'Payment was canceled. Please try again when you are ready.';
+    }
+    
     await Promise.all([
       loadCreditInfo(),
       loadCreditTransactions(),
@@ -144,25 +161,41 @@
       errorMessage = '';
       successMessage = '';
       
-      // In a production application, this would integrate with a payment provider
-      // For now, we'll simulate a successful purchase
+      // Get the user ID
+      const { data: { user } } = await supabase.auth.getUser();
       
-      // Simulate payment processing delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (!user) {
+        errorMessage = 'You must be logged in to purchase credits';
+        purchaseInProgress = false;
+        return;
+      }
       
-      // For demo purposes, just show success message
-      // In production, this would handle real payment processing and call backend APIs
-      successMessage = `Successfully purchased ${packageToPurchase.credits} credits!`;
+      // Create a Stripe Checkout session via our API
+      const response = await fetch(`${API_URL}/api/payment/create-link`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': API_KEY
+        },
+        body: JSON.stringify({
+          package_id: selectedPackage,
+          user_id: user.id
+        })
+      });
       
-      // Reload credit info to show updated balance
-      await loadCreditInfo();
-      await loadCreditTransactions();
-      await loadPaymentTransactions();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to create payment session');
+      }
+      
+      const paymentData = await response.json();
+      
+      // Redirect to the Stripe Checkout page
+      window.location.href = paymentData.payment_url;
       
     } catch (err: any) {
       console.error('Error purchasing credits:', err);
       errorMessage = err.message || 'Failed to process payment';
-    } finally {
       purchaseInProgress = false;
     }
   }
