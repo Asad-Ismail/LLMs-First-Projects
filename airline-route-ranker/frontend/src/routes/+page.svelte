@@ -563,7 +563,7 @@
         hasCredits = await hasEnoughCredits(1);
         
         if (!hasCredits) {
-          errorMessage = 'You need a credit to perform this search. Get 2 credits for only $0.99 to access unique flight reliability data.';
+          errorMessage = 'You need a credit to perform this search. Get credits for only $1.99 for 5 to access unique flight reliability data.';
           needsCredits = true;
           return;
         }
@@ -575,6 +575,12 @@
         destination.toUpperCase(), 
         travelDate
       );
+      
+      // If not logged in and search requires credit, show special message
+      if (searchRequiresCredit) {
+        errorMessage = 'Create a FREE account and get 2 search credits! Sign up now to access unique flight reliability data.';
+        return;
+      }
     }
 
     isSubmitting = true;
@@ -651,7 +657,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span class="font-bold text-sm md:text-base">Sign up for FREE and get 2 search credits! Additional credits just $0.99 for 2.</span>
+            <span class="font-bold text-sm md:text-base">Sign up for FREE and get 2 search credits! Additional credits just $1.99 for 5.</span>
           </div>
           <a href="/signup" class="bg-white hover:bg-sky-50 text-sky-dark font-bold py-2 px-6 rounded-full transition-colors shadow-md">
             Create Account
@@ -673,7 +679,7 @@
           Credits Required
         </h3>
         <p class="mb-3">
-          This search requires a credit since it's not in our cache. Get 2 credits for only $0.99 to access unique flight reliability data.
+          This search requires a credit since it's not in our cache. Get 2 credits for only $1.99 for 5 to access unique flight reliability data.
         </p>
         <div class="flex justify-end">
           <a href="/profile/credits" class="bg-flight-warning hover:bg-amber-500 text-white font-bold py-2 px-4 rounded transition-colors">
@@ -702,7 +708,7 @@
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          This route isn't in our cache. Sign up to get your 2 FREE credits and access unique flight data! Additional credits just $0.99 for 2.
+          This route isn't in our cache. Sign up to get your 2 FREE credits and access unique flight data! Additional credits just $1.99 for 5.
         </p>
         <div class="flex justify-end">
           <a href="/signup" class="bg-flight-success hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-sm transition-colors">
@@ -723,7 +729,7 @@
         <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-accent to-flight-primary font-bold">Know</span> Before You Go
       </h2>
       <p class="text-cloud-light/90 leading-relaxed text-sm md:text-base mb-6">
-        Find the most reliable flights for your route
+        Get Route specific flights rankings
       </p>
       
       <!-- Feature Badges with Better Readability -->
@@ -879,10 +885,10 @@
               </svg>
               <span>Searching</span>
             {:else if searchRequiresCredit && !isLoggedIn}
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9a1 1 0 00-1-1z" clip-rule="evenodd" />
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-300" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zm7-10a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clip-rule="evenodd" />
               </svg>
-              <span>Sign In Required</span>
+              <span>Sign Up - Get 2 Free Credits!</span>
             {:else if searchRequiresCredit && !hasCredits}
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
@@ -963,8 +969,8 @@
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span class="font-medium">Credits: {hasCredits ? '✓ Available' : '⚠️ None'}</span>
-          <a href="/profile/credits" class="text-sky-accent hover:text-white ml-1 font-bold">Get More - Only $0.99 for 2!</a>
+          <span class="font-medium text-yellow-300">Credits: {hasCredits ? '✓ Available' : '⚠️ None'}</span>
+          <a href="/profile/credits" class="text-sky-accent hover:text-white ml-1 font-bold">only $1.99 for 5 credits!</a>
         </div>
       </div>
     {/if}

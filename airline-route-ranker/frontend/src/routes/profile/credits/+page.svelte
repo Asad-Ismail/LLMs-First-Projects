@@ -262,7 +262,9 @@
                   >
                     <div class="text-xl font-bold text-white">{pkg.credits} Credits</div>
                     <div class="text-white/80 text-sm">${pkg.price.toFixed(2)}</div>
-                    {#if pkg.is_best_value}
+                    {#if pkg.credits === 5}
+                      <div class="mt-1 text-xs inline-block bg-amber-500/20 text-amber-500 px-2 py-0.5 rounded-full">Special Offer</div>
+                    {:else if pkg.credits === 15}
                       <div class="mt-1 text-xs inline-block bg-flight-success/20 text-flight-success px-2 py-0.5 rounded-full">Best Value</div>
                     {/if}
                   </button>

@@ -242,10 +242,6 @@
           <span class="text-white">{profile?.email || 'No email'}</span>
         </div>
         
-        <div class="flex flex-col">
-          <span class="text-white/60 text-sm mb-1">Preferred Travel Class</span>
-          <span class="text-white">{profile?.travel_class || 'Economy'}</span>
-        </div>
         
         <div class="flex flex-col">
           <span class="text-white/60 text-sm mb-1">Credits</span>
