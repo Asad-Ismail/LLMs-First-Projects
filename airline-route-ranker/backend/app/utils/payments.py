@@ -212,6 +212,12 @@ async def process_successful_payment(session: Dict[str, Any]) -> None:
         session_id = session.get('id', 'unknown')
         print(f"⭐ Processing payment for session: {session_id}")
         
+        # IMPORTANT: Check if this payment has already been processed to prevent duplicates
+        existing_payment = db.table('user_payment_transactions').select('id').eq('provider_transaction_id', session_id).execute()
+        if existing_payment.data and len(existing_payment.data) > 0:
+            print(f"⚠️ Payment with session ID {session_id} already processed. Skipping to prevent duplicates.")
+            return
+        
         # Extract metadata
         metadata = session.get('metadata', {})
         
