@@ -13,7 +13,8 @@ load_dotenv()
 # Set Stripe API key from environment
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+# Fix trailing slash in FRONTEND_URL to prevent double slash in URLs
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip('/')
 
 # Helper function to get appropriate Supabase client
 def get_db_client():
