@@ -26,4 +26,9 @@ console.log('✅ Created 200.html for SPA routing on Render');
 // Copy index.html to 404.html as well for safety
 const html404Path = path.join(buildDir, '404.html');
 fs.copyFileSync(indexPath, html404Path);
-console.log('✅ Created 404.html for SPA routing on Render'); 
+console.log('✅ Created 404.html for SPA routing on Render');
+
+// Create _redirects file (crucial for Render static sites)
+const redirectsPath = path.join(buildDir, '_redirects');
+fs.writeFileSync(redirectsPath, '/* /index.html 200');
+console.log('✅ Created _redirects file for SPA routing on Render'); 

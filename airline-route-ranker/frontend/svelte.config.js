@@ -8,26 +8,29 @@ const config = {
 	preprocess: vitePreprocess(),
 
 	kit: {
-		// adapter-auto only supports some environments, see https://svelte.dev/docs/kit/adapter-auto for a list.
-		// If your environment is not supported, or you settled on a specific environment, switch out the adapter.
-		// See https://svelte.dev/docs/kit/adapters for more information about adapters.
+		// Configure for a static site with SPA fallback
 		adapter: adapter({
 			pages: 'build',
 			assets: 'build',
 			fallback: 'index.html',  // Important for SPA routing
-			precompress: false,      // Disable precompression
-			strict: false            // Disable strict mode to allow more flexible routing
+			precompress: false,
+			strict: false
 		}),
+		
 		// Ensure paths are relative to the base URL
 		paths: {
 			base: '',
 			assets: ''
 		},
-		// Add this to ensure all routes are handled by the SPA
+		
+		// Important: No server-side rendering, use client-side SPA mode
 		prerender: {
 			default: false,
 			entries: []
-		}
+		},
+		
+		// Enable trailing slashes for consistent routing
+		trailingSlash: 'always'
 	}
 };
 
