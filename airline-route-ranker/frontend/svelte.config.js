@@ -27,10 +27,7 @@ const config = {
 		prerender: {
 			default: false,
 			entries: []
-		},
-		
-		// Enable trailing slashes for consistent routing
-		trailingSlash: 'always'
+		}
 	}
 };
 
