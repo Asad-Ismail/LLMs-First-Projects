@@ -14,12 +14,19 @@ const config = {
 		adapter: adapter({
 			pages: 'build',
 			assets: 'build',
-			fallback: 'index.html'  // Important for SPA routing
+			fallback: 'index.html',  // Important for SPA routing
+			precompress: false,      // Disable precompression
+			strict: false            // Disable strict mode to allow more flexible routing
 		}),
 		// Ensure paths are relative to the base URL
 		paths: {
 			base: '',
 			assets: ''
+		},
+		// Add this to ensure all routes are handled by the SPA
+		prerender: {
+			default: false,
+			entries: []
 		}
 	}
 };
