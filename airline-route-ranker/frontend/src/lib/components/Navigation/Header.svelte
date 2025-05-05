@@ -1,5 +1,6 @@
 <script lang="ts">
   import AuthControls from '$lib/components/Auth/AuthControls.svelte';
+  import { onMount } from 'svelte';
   
   // Optional prop to highlight the current page
   export let currentPage: 'home' | 'about' | 'faq' | 'contact' | 'profile' = 'home';
@@ -9,9 +10,34 @@
   
   // Toggle mobile menu function
   function toggleMobileMenu() {
+    console.log('Toggle mobile menu, current state:', mobileMenuOpen);
     mobileMenuOpen = !mobileMenuOpen;
   }
+
+  // Ensure menu closes when clicking links (for mobile)
+  function closeMenu() {
+    mobileMenuOpen = false;
+  }
+
+  // Handle keyboard events
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape' && mobileMenuOpen) {
+      mobileMenuOpen = false;
+    }
+  }
+
+  onMount(() => {
+    // Add keyboard event listener
+    window.addEventListener('keydown', handleKeydown);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('keydown', handleKeydown);
+    };
+  });
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 <!-- Enhanced Header & Navigation with Glass Morphism -->
 <header class="py-3 bg-gradient-to-r from-sky-dark/80 via-sky-dark/90 to-sky-dark/80 border-b border-sky-accent/30 sticky top-0 z-10 backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.2)]">
@@ -67,7 +93,13 @@
       </div>
     </nav>
     
-    <button on:click={toggleMobileMenu} class="md:hidden text-white flex-1 flex justify-end">
+    <!-- Mobile hamburger menu button with active states -->
+    <button 
+      type="button"
+      on:click={() => toggleMobileMenu()} 
+      class="md:hidden text-white flex-1 flex justify-end z-20"
+      aria-label="Toggle mobile menu"
+    >
       <!-- Hamburger icon for mobile menu with improved styling -->
       <div class="bg-white/5 hover:bg-white/15 p-2 rounded-lg transition-all duration-300 border border-white/10 shadow-sm hover:shadow-md">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -77,56 +109,61 @@
     </button>
   </div>
   
-  <!-- Mobile menu drawer -->
-  {#if mobileMenuOpen}
-    <div class="md:hidden fixed inset-0 bg-sky-dark/95 z-50 backdrop-blur-lg transition-all duration-300 overflow-auto pt-16">
-      <div class="container mx-auto px-6">
-        <!-- Close button -->
-        <button on:click={toggleMobileMenu} class="absolute top-4 right-4 text-white p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+  <!-- Mobile menu drawer - always in DOM but conditionally visible -->
+  <div 
+    class="md:hidden fixed inset-0 bg-sky-dark/95 z-50 backdrop-blur-lg overflow-auto pt-16 transition-opacity duration-300 {mobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}"
+  >
+    <div class="container mx-auto px-6">
+      <!-- Close button -->
+      <button 
+        type="button"
+        on:click={() => toggleMobileMenu()}
+        class="absolute top-4 right-4 text-white p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+        aria-label="Close menu"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+      
+      <!-- Mobile navigation links -->
+      <div class="flex flex-col space-y-6 items-center text-center pt-8">
+        <a 
+          href="/" 
+          on:click={closeMenu}
+          class={`text-xl font-medium ${currentPage === 'home' ? 'text-sky-accent' : 'text-white'} hover:text-sky-accent transition-colors py-2`}
+        >
+          Home
+        </a>
+        <a 
+          href="/about" 
+          on:click={closeMenu}
+          class={`text-xl font-medium ${currentPage === 'about' ? 'text-sky-accent' : 'text-white'} hover:text-sky-accent transition-colors py-2`}
+        >
+          About
+        </a>
+        <a 
+          href="/faq" 
+          on:click={closeMenu}
+          class={`text-xl font-medium ${currentPage === 'faq' ? 'text-sky-accent' : 'text-white'} hover:text-sky-accent transition-colors py-2`}
+        >
+          FAQ
+        </a>
+        <a 
+          href="/contact" 
+          on:click={closeMenu}
+          class={`text-xl font-medium ${currentPage === 'contact' ? 'text-sky-accent' : 'text-white'} hover:text-sky-accent transition-colors py-2`}
+        >
+          Contact
+        </a>
         
-        <!-- Mobile navigation links -->
-        <div class="flex flex-col space-y-6 items-center text-center pt-8">
-          <a 
-            href="/" 
-            on:click={toggleMobileMenu}
-            class={`text-xl font-medium ${currentPage === 'home' ? 'text-sky-accent' : 'text-white'} hover:text-sky-accent transition-colors py-2`}
-          >
-            Home
-          </a>
-          <a 
-            href="/about" 
-            on:click={toggleMobileMenu}
-            class={`text-xl font-medium ${currentPage === 'about' ? 'text-sky-accent' : 'text-white'} hover:text-sky-accent transition-colors py-2`}
-          >
-            About
-          </a>
-          <a 
-            href="/faq" 
-            on:click={toggleMobileMenu}
-            class={`text-xl font-medium ${currentPage === 'faq' ? 'text-sky-accent' : 'text-white'} hover:text-sky-accent transition-colors py-2`}
-          >
-            FAQ
-          </a>
-          <a 
-            href="/contact" 
-            on:click={toggleMobileMenu}
-            class={`text-xl font-medium ${currentPage === 'contact' ? 'text-sky-accent' : 'text-white'} hover:text-sky-accent transition-colors py-2`}
-          >
-            Contact
-          </a>
-          
-          <!-- Mobile auth controls -->
-          <div class="w-full max-w-xs bg-white/5 backdrop-blur-sm p-4 rounded-2xl border border-white/10 mt-4">
-            <AuthControls />
-          </div>
+        <!-- Mobile auth controls -->
+        <div class="w-full max-w-xs bg-white/5 backdrop-blur-sm p-4 rounded-2xl border border-white/10 mt-4">
+          <AuthControls />
         </div>
       </div>
     </div>
-  {/if}
+  </div>
 </header>
 
 <style>
