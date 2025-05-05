@@ -15,6 +15,8 @@ from .controller import FlightAnalysisSystem, extract_flight_numbers_for_route
 from .utils.email import send_contact_email
 from .utils.supabase_client import supabase, supabase_admin
 from .utils.payments import create_payment_link, handle_webhook_event, get_db_client
+from .utils.paypal import create_paypal_payment_link, process_paypal_successful_payment
+from .utils.config import ACTIVE_PAYMENT_PROVIDER, FRONTEND_URL
 
 # Load environment variables
 load_dotenv()
@@ -116,7 +118,7 @@ async def verify_api_key(request: Request, call_next):
         )
     
     # Skip authentication for health endpoint and webhook endpoint
-    if request.url.path == "/api/health" or request.url.path == "/api/payment/webhook":
+    if request.url.path == "/api/health" or request.url.path == "/api/payment/webhook" or request.url.path == "/api/payment/paypal-success":
         response = await call_next(request)
         # Add CORS headers to the response
         for key, value in cors_headers.items():
@@ -435,6 +437,7 @@ class PaymentRequest(BaseModel):
     user_id: str = Field(..., description="The ID of the user making the purchase")
     success_url: Optional[str] = Field(None, description="URL to redirect after successful payment")
     cancel_url: Optional[str] = Field(None, description="URL to redirect after cancelled payment")
+    provider: Optional[str] = Field(None, description="Payment provider (stripe or paypal)")
 
 
 @app.post("/api/payment/create-link")
@@ -443,7 +446,7 @@ async def create_payment(
     x_api_key: str = Header(None, alias="X-API-Key")
 ):
     """
-    Create a Stripe payment link for purchasing credits.
+    Create a payment link for purchasing credits.
     
     Args:
         payment: Payment request with package and user details
@@ -456,13 +459,25 @@ async def create_payment(
         if not x_api_key or x_api_key != API_KEY:
             raise HTTPException(status_code=401, detail="Invalid or missing API key")
         
-        # Create payment link
-        payment_data = await create_payment_link(
-            package_id=payment.package_id,
-            user_id=payment.user_id,
-            success_url=payment.success_url,
-            cancel_url=payment.cancel_url
-        )
+        # Determine payment provider
+        provider = payment.provider or ACTIVE_PAYMENT_PROVIDER
+        
+        if provider == 'stripe':
+            # Create Stripe payment link
+            payment_data = await create_payment_link(
+                package_id=payment.package_id,
+                user_id=payment.user_id,
+                success_url=payment.success_url,
+                cancel_url=payment.cancel_url
+            )
+        else:
+            # Default to PayPal
+            payment_data = await create_paypal_payment_link(
+                package_id=payment.package_id,
+                user_id=payment.user_id,
+                success_url=payment.success_url,
+                cancel_url=payment.cancel_url
+            )
         
         return payment_data
     
@@ -513,6 +528,45 @@ async def webhook(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Webhook processing error")
+
+
+@app.get("/api/payment/paypal-success")
+async def paypal_success(
+    package_id: str = Query(..., description="The package ID from the PayPal return URL"),
+    user_id: str = Query(..., description="The user ID from the PayPal return URL"),
+    credits: int = Query(..., description="The number of credits from the PayPal return URL"),
+    success: str = Query("true", description="Success indicator")
+):
+    """
+    Handle PayPal success redirect and process the payment.
+    
+    This endpoint is called when a user is redirected back from PayPal after a successful payment.
+    """
+    try:
+        # Only process if success is true
+        if success.lower() != "true":
+            return {"status": "error", "message": "Payment not successful"}
+        
+        # Process the payment
+        payment_data = {
+            "user_id": user_id,
+            "package_id": package_id,
+            "credits": credits,
+            "session_id": str(uuid.uuid4())  # Generate a session ID since PayPal doesn't provide one
+        }
+        
+        result = await process_paypal_successful_payment(payment_data)
+        
+        # Redirect to the frontend
+        redirect_url = f"{FRONTEND_URL}/profile/credits?success=true&credits={credits}"
+        return {"status": "success", "redirect": redirect_url, "details": result}
+    
+    except Exception as e:
+        print(f"❌ Error processing PayPal success: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+
 
 @app.get("/api/payment/confirm-success")
 async def confirm_success(

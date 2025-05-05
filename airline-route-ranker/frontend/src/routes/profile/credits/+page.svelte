@@ -170,7 +170,7 @@
         return;
       }
       
-      // Create a Stripe Checkout session via our API
+      // Create a payment checkout session via our API
       const response = await fetch(`${API_URL}/api/payment/create-link`, {
         method: 'POST',
         headers: {
@@ -180,6 +180,8 @@
         body: JSON.stringify({
           package_id: selectedPackage,
           user_id: user.id
+          // Let the backend use the default payment provider 
+          // configured in its settings
         })
       });
       
@@ -190,7 +192,7 @@
       
       const paymentData = await response.json();
       
-      // Redirect to the Stripe Checkout page
+      // Redirect to the payment checkout page
       window.location.href = paymentData.payment_url;
       
     } catch (err: any) {
