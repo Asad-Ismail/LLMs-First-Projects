@@ -8,13 +8,14 @@
   // Add state for mobile menu
   let mobileMenuOpen = false;
   
-  // Toggle mobile menu function
+  // Toggle mobile menu function with explicit debug
   function toggleMobileMenu() {
-    console.log('Toggle mobile menu, current state:', mobileMenuOpen);
+    console.log('Toggle mobile menu clicked');
     mobileMenuOpen = !mobileMenuOpen;
+    console.log('Mobile menu is now:', mobileMenuOpen ? 'OPEN' : 'CLOSED');
   }
 
-  // Ensure menu closes when clicking links (for mobile)
+  // Ensure menu closes when clicking links
   function closeMenu() {
     mobileMenuOpen = false;
   }
@@ -93,14 +94,11 @@
       </div>
     </nav>
     
-    <!-- Mobile hamburger menu button with active states -->
+    <!-- Mobile hamburger button - simplified with direct on:click handler -->
     <button 
-      type="button"
-      on:click={() => toggleMobileMenu()} 
-      class="md:hidden text-white flex-1 flex justify-end z-20"
-      aria-label="Toggle mobile menu"
+      on:click={toggleMobileMenu} 
+      class="md:hidden text-white flex-1 flex justify-end"
     >
-      <!-- Hamburger icon for mobile menu with improved styling -->
       <div class="bg-white/5 hover:bg-white/15 p-2 rounded-lg transition-all duration-300 border border-white/10 shadow-sm hover:shadow-md">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
@@ -108,18 +106,16 @@
       </div>
     </button>
   </div>
-  
-  <!-- Mobile menu drawer - always in DOM but conditionally visible -->
-  <div 
-    class="md:hidden fixed inset-0 bg-sky-dark/95 z-50 backdrop-blur-lg overflow-auto pt-16 transition-opacity duration-300 {mobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}"
-  >
+</header>
+
+<!-- Mobile menu as a separate component outside the header -->
+{#if mobileMenuOpen}
+  <div class="mobile-menu md:hidden fixed inset-0 bg-sky-dark/95 z-50 pt-16">
     <div class="container mx-auto px-6">
       <!-- Close button -->
       <button 
-        type="button"
-        on:click={() => toggleMobileMenu()}
+        on:click={toggleMobileMenu}
         class="absolute top-4 right-4 text-white p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-        aria-label="Close menu"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -164,7 +160,7 @@
       </div>
     </div>
   </div>
-</header>
+{/if}
 
 <style>
   .animate-pulse-slow {
@@ -182,5 +178,17 @@
   
   .text-shadow-md {
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Mobile menu styles */
+  .mobile-menu {
+    display: block;
+    animation: fadeIn 0.3s ease-in-out;
+    backdrop-filter: blur(8px);
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 </style> 
