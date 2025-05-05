@@ -1007,4 +1007,20 @@
     background: radial-gradient(circle at center, transparent 0%, rgba(15, 23, 42, 0.6) 100%);
     pointer-events: none;
   }
+
+  :global(.plane-icon-container) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  :global(.plane-icon) {
+    display: block !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 24px !important;
+    min-height: 24px !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
 </style>

@@ -3,6 +3,14 @@
   
   // Optional prop to highlight the current page
   export let currentPage: 'home' | 'about' | 'faq' | 'contact' | 'profile' = 'home';
+  
+  // Add state for mobile menu
+  let mobileMenuOpen = false;
+  
+  // Toggle mobile menu function
+  function toggleMobileMenu() {
+    mobileMenuOpen = !mobileMenuOpen;
+  }
 </script>
 
 <!-- Enhanced Header & Navigation with Glass Morphism -->
@@ -20,10 +28,10 @@
     </div>
     
     <div class="flex items-center gap-3 justify-center flex-1">
-      <div class="bg-gradient-to-br from-sky-accent/30 to-flight-primary/30 rounded-full p-2 shadow-[0_0_20px_rgba(56,189,248,0.4)] animate-pulse-slow backdrop-blur-sm border border-sky-accent/20">
-        <img src="/plane-takeoff.svg" alt="Flight Ranking" class="h-7 w-7 transform -rotate-12 hover:rotate-0 transition-transform duration-500" />
+      <div class="plane-icon-container bg-gradient-to-br from-sky-accent/30 to-flight-primary/30 rounded-full p-2 shadow-[0_0_20px_rgba(56,189,248,0.4)] animate-pulse-slow backdrop-blur-sm border border-sky-accent/20">
+        <img src="/plane-takeoff.svg" alt="Flight Ranking" class="plane-icon h-7 w-7 transform -rotate-12 hover:rotate-0 transition-transform duration-500" />
       </div>
-      <h1 class="text-2xl font-bold text-white text-shadow-md bg-clip-text bg-gradient-to-r from-white via-white to-sky-accent/90">
+      <h1 class="text-xl md:text-2xl font-bold text-white text-shadow-md bg-clip-text bg-gradient-to-r from-white via-white to-sky-accent/90">
         <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-accent to-flight-primary">Flight</span> Reliability Rankings
       </h1>
     </div>
@@ -59,7 +67,7 @@
       </div>
     </nav>
     
-    <button class="md:hidden text-white flex-1 flex justify-end">
+    <button on:click={toggleMobileMenu} class="md:hidden text-white flex-1 flex justify-end">
       <!-- Hamburger icon for mobile menu with improved styling -->
       <div class="bg-white/5 hover:bg-white/15 p-2 rounded-lg transition-all duration-300 border border-white/10 shadow-sm hover:shadow-md">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -68,6 +76,57 @@
       </div>
     </button>
   </div>
+  
+  <!-- Mobile menu drawer -->
+  {#if mobileMenuOpen}
+    <div class="md:hidden fixed inset-0 bg-sky-dark/95 z-50 backdrop-blur-lg transition-all duration-300 overflow-auto pt-16">
+      <div class="container mx-auto px-6">
+        <!-- Close button -->
+        <button on:click={toggleMobileMenu} class="absolute top-4 right-4 text-white p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        
+        <!-- Mobile navigation links -->
+        <div class="flex flex-col space-y-6 items-center text-center pt-8">
+          <a 
+            href="/" 
+            on:click={toggleMobileMenu}
+            class={`text-xl font-medium ${currentPage === 'home' ? 'text-sky-accent' : 'text-white'} hover:text-sky-accent transition-colors py-2`}
+          >
+            Home
+          </a>
+          <a 
+            href="/about" 
+            on:click={toggleMobileMenu}
+            class={`text-xl font-medium ${currentPage === 'about' ? 'text-sky-accent' : 'text-white'} hover:text-sky-accent transition-colors py-2`}
+          >
+            About
+          </a>
+          <a 
+            href="/faq" 
+            on:click={toggleMobileMenu}
+            class={`text-xl font-medium ${currentPage === 'faq' ? 'text-sky-accent' : 'text-white'} hover:text-sky-accent transition-colors py-2`}
+          >
+            FAQ
+          </a>
+          <a 
+            href="/contact" 
+            on:click={toggleMobileMenu}
+            class={`text-xl font-medium ${currentPage === 'contact' ? 'text-sky-accent' : 'text-white'} hover:text-sky-accent transition-colors py-2`}
+          >
+            Contact
+          </a>
+          
+          <!-- Mobile auth controls -->
+          <div class="w-full max-w-xs bg-white/5 backdrop-blur-sm p-4 rounded-2xl border border-white/10 mt-4">
+            <AuthControls />
+          </div>
+        </div>
+      </div>
+    </div>
+  {/if}
 </header>
 
 <style>
