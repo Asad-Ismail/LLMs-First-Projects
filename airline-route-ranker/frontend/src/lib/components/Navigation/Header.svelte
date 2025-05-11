@@ -65,7 +65,7 @@
     
     <!-- Navigation -->
     <nav class="hidden md:flex gap-6 justify-end flex-1">
-      <div class="flex gap-2 bg-white/5 hover:bg-white/10 backdrop-blur-sm px-4 py-1.5 rounded-full transition-all duration-300 border border-white/10 shadow-sm hover:shadow-md">
+      <div class="flex gap-2 bg-white/5 hover:bg-white/10 backdrop-blur-sm px-4 py-1.5 rounded-full transition-all duration-300 border border-white/10 shadow-sm hover:shadow-md flex items-center">
         <a 
           href="/about" 
           class={`text-${currentPage === 'about' ? 'sky-accent' : 'white/90'} hover:text-sky-accent transition-colors text-sm font-medium`}
@@ -89,7 +89,7 @@
       </div>
       
       <!-- Auth Controls -->
-      <div class="ml-2 bg-white/5 hover:bg-white/10 backdrop-blur-sm px-4 py-1.5 rounded-full transition-all duration-300 border border-white/10 shadow-sm hover:shadow-md">
+      <div class="ml-2 bg-white/5 hover:bg-white/10 backdrop-blur-sm px-4 py-1.5 rounded-full transition-all duration-300 border border-white/10 shadow-sm hover:shadow-md flex items-center">
         <AuthControls />
       </div>
     </nav>
