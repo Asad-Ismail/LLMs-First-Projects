@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 import glob
 from pathlib import Path as PathLib
 from pydantic import BaseModel, EmailStr, Field
+import uuid
+import json
 
 from .controller import FlightAnalysisSystem, extract_flight_numbers_for_route
 from .utils.email import send_contact_email
@@ -531,14 +533,14 @@ async def webhook(
 
 
 @app.get("/api/payment/paypal-success")
-async def paypal_success(
+async def paypal_success_get(
     package_id: str = Query(..., description="The package ID from the PayPal return URL"),
     user_id: str = Query(..., description="The user ID from the PayPal return URL"),
     credits: int = Query(..., description="The number of credits from the PayPal return URL"),
     success: str = Query("true", description="Success indicator")
 ):
     """
-    Handle PayPal success redirect and process the payment.
+    Handle PayPal success redirect and process the payment via GET method.
     
     This endpoint is called when a user is redirected back from PayPal after a successful payment.
     """
@@ -562,7 +564,73 @@ async def paypal_success(
         return {"status": "success", "redirect": redirect_url, "details": result}
     
     except Exception as e:
-        print(f"❌ Error processing PayPal success: {e}")
+        print(f"❌ Error processing PayPal success (GET): {e}")
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+
+
+@app.post("/api/payment/paypal-success")
+async def paypal_success_post(
+    request: Request
+):
+    """
+    Handle PayPal success POST callback.
+    
+    This endpoint is called when PayPal sends a POST notification after a successful payment.
+    """
+    try:
+        # Get data from POST request
+        form_data = await request.form()
+        print(f"🔔 Received PayPal POST success notification: {form_data}")
+        
+        # Extract PayPal data - handle both IPN and PDT formats
+        # First, try to get the 'custom' field which should contain our data
+        custom_data = form_data.get('custom', '')
+        
+        try:
+            # Parse the custom JSON data if available
+            if custom_data:
+                custom_json = json.loads(custom_data)
+                user_id = custom_json.get('user_id')
+                package_id = custom_json.get('package_id')
+                credits = int(custom_json.get('credits', 0))
+                session_id = custom_json.get('session_id')
+            else:
+                # Try to get data from other fields
+                user_id = form_data.get('user_id')
+                package_id = form_data.get('package_id')
+                credits = int(form_data.get('credits', 0))
+                session_id = form_data.get('txn_id') or str(uuid.uuid4())
+        except Exception as e:
+            print(f"⚠️ Error parsing PayPal custom data: {e}, using fallback extraction")
+            # Fallback to direct field extraction
+            user_id = form_data.get('user_id')
+            package_id = form_data.get('package_id')
+            credits = int(form_data.get('credits', 5))  # Default to 5 if not found
+            session_id = form_data.get('txn_id') or str(uuid.uuid4())
+        
+        if not user_id or not credits:
+            print("❌ Missing required fields in PayPal POST data")
+            return {"status": "error", "message": "Missing required fields"}
+            
+        print(f"🔄 Processing PayPal POST notification for user {user_id}, {credits} credits")
+        
+        # Process the payment
+        payment_data = {
+            "user_id": user_id,
+            "package_id": package_id,
+            "credits": credits,
+            "session_id": session_id
+        }
+        
+        result = await process_paypal_successful_payment(payment_data)
+        print(f"✅ PayPal POST payment processed: {result}")
+        
+        return {"status": "success", "details": result}
+    
+    except Exception as e:
+        print(f"❌ Error processing PayPal success (POST): {e}")
         import traceback
         traceback.print_exc()
         return {"status": "error", "message": str(e)}

@@ -72,6 +72,12 @@ async def create_paypal_payment_link(
     # Create a basic PayPal personal payment URL
     paypal_base_url = "https://www.paypal.com/cgi-bin/webscr" if PAYPAL_MODE == "live" else "https://www.sandbox.paypal.com/cgi-bin/webscr"
     
+    # Extract base URL for notifications
+    base_url = success_url.rsplit('/', 2)[0] if success_url and '/' in success_url else "https://api.flightreliabilityrankings.com"
+    notify_url = f"{base_url}/api/payment/paypal-success"
+    
+    print(f"🔄 Setting PayPal IPN notify URL to: {notify_url}")
+    
     # Setup PayPal parameters
     paypal_params = {
         'cmd': '_xclick',
@@ -81,6 +87,7 @@ async def create_paypal_payment_link(
         'currency_code': package_data['currency'],
         'return': success_url,
         'cancel_return': cancel_url,
+        'notify_url': notify_url,
         'custom': json.dumps({
             'user_id': user_id,
             'package_id': package_id,
