@@ -3,6 +3,7 @@ fastapi>=0.95.0
 uvicorn>=0.21.1
 pydantic>=1.10.7
 email-validator>=2.0.0  # For EmailStr validation
+python-multipart>=0.0.6  # For form data parsing
 
 # External API Communication
 requests>=2.28.2
