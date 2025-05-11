@@ -152,14 +152,21 @@ async def process_paypal_successful_payment(data: Dict[str, Any]) -> Dict[str, A
         print(f"⭐ Processing PayPal payment for session: {session_id}")
         
         # IMPORTANT: Check if this payment has already been processed to prevent duplicates
-        existing_payment = db.table('user_payment_transactions').select('id') \
+        # Check for BOTH completed AND pending payments to avoid double processing
+        existing_payment_query = db.table('user_payment_transactions').select('id, status') \
             .eq('provider_transaction_id', session_id) \
-            .eq('status', 'completed') \
             .execute()
             
-        if existing_payment.data and len(existing_payment.data) > 0:
-            print(f"⚠️ PayPal payment with session ID {session_id} already processed. Skipping to prevent duplicates.")
-            return {"status": "already_processed", "message": "Payment already processed"}
+        if existing_payment_query.data and len(existing_payment_query.data) > 0:
+            # If payment exists in ANY status, we should handle it carefully
+            existing_payment = existing_payment_query.data[0]
+            
+            if existing_payment.get('status') == 'completed':
+                print(f"⚠️ PayPal payment with session ID {session_id} already COMPLETED. Skipping to prevent duplicates.")
+                return {"status": "already_processed", "message": "Payment already processed"}
+            
+            # If it's pending, we'll update it below and continue processing
+            print(f"ℹ️ Found existing payment record in status: {existing_payment.get('status')}") 
         
         # Get package details for verification
         package_result = db.table('credit_packages').select('*').eq('id', package_id).execute()
@@ -175,6 +182,18 @@ async def process_paypal_successful_payment(data: Dict[str, Any]) -> Dict[str, A
             credits = package_data['credits'] if package_result.data else 5
         
         print(f"👤 Processing payment for user: {user_id} - Credits: {credits}")
+        
+        # Check AGAIN for any payment records to prevent race conditions
+        # This will find any records with this session ID, whether pending, completed, or other status
+        payment_exists_query = db.table('user_credit_transactions').select('id') \
+            .eq('description', f"Purchased {credits} credits via PayPal") \
+            .eq('user_id', user_id) \
+            .limit(1) \
+            .execute()
+            
+        if payment_exists_query.data and len(payment_exists_query.data) > 0:
+            print(f"⚠️ Credit transaction for this purchase already exists! Preventing duplicate.")
+            return {"status": "already_processed", "message": "Credit transaction already exists"}
         
         # Update any pending payment records first
         pending_payment = db.table('user_payment_transactions') \

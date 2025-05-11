@@ -543,28 +543,23 @@ async def paypal_success(
     Handle PayPal success redirect and process the payment.
     
     This endpoint is called when a user is redirected back from PayPal after a successful payment.
+    Note: To avoid double processing, we now let the IPN (POST) handle the actual payment processing.
     """
     try:
-        # Only process if success is true
+        # Only proceed if success is true
         if success.lower() != "true":
             return {"status": "error", "message": "Payment not successful"}
         
-        # Process the payment
-        payment_data = {
-            "user_id": user_id,
-            "package_id": package_id,
-            "credits": credits,
-            "session_id": str(uuid.uuid4())  # Generate a session ID since PayPal doesn't provide one
-        }
+        print(f"✅ PayPal success redirect received for user {user_id}, package {package_id}, credits {credits}")
+        print(f"ℹ️ Redirecting to frontend - actual payment processing will be handled by IPN webhook")
         
-        result = await process_paypal_successful_payment(payment_data)
-        
-        # Redirect to the frontend
+        # Simply redirect to the frontend with success parameters
+        # The actual payment processing will happen via the PayPal IPN (POST) notification
         redirect_url = f"{FRONTEND_URL}/profile/credits?success=true&credits={credits}"
-        return {"status": "success", "redirect": redirect_url, "details": result}
+        return {"status": "redirect", "redirect": redirect_url}
     
     except Exception as e:
-        print(f"❌ Error processing PayPal success: {e}")
+        print(f"❌ Error in PayPal success redirect: {e}")
         import traceback
         traceback.print_exc()
         return {"status": "error", "message": str(e)}
