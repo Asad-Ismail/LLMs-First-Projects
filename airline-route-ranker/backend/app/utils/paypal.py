@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional
 import json
 import requests
 from urllib.parse import urlencode
-from .config import PAYPAL_EMAIL, PAYPAL_MODE, FRONTEND_URL
+from .config import PAYPAL_EMAIL, PAYPAL_MODE, FRONTEND_URL, BACKEND_URL
 from .supabase_client import supabase, supabase_admin
 
 # Helper function to get the appropriate Supabase client
@@ -58,7 +58,11 @@ async def create_paypal_payment_link(
     
     # Set default URLs if not provided
     if not success_url:
-        success_url = f"{FRONTEND_URL}/profile/credits?success=true&package_id={package_id}&user_id={user_id}&credits={package_data['credits']}"
+        # Use BACKEND_URL for PayPal success callback
+        backend_success_url = f"{BACKEND_URL}/api/payment/paypal-success?success=true&package_id={package_id}&user_id={user_id}&credits={package_data['credits']}"
+        # This is where user will be redirected after PayPal processes the payment
+        success_url = backend_success_url
+        print(f"🔗 Using backend success URL: {success_url}")
     if not cancel_url:
         cancel_url = f"{FRONTEND_URL}/profile/credits?canceled=true"
     
@@ -72,12 +76,6 @@ async def create_paypal_payment_link(
     # Create a basic PayPal personal payment URL
     paypal_base_url = "https://www.paypal.com/cgi-bin/webscr" if PAYPAL_MODE == "live" else "https://www.sandbox.paypal.com/cgi-bin/webscr"
     
-    # Extract base URL for notifications
-    base_url = success_url.rsplit('/', 2)[0] if success_url and '/' in success_url else "https://api.flightreliabilityrankings.com"
-    notify_url = f"{base_url}/api/payment/paypal-success"
-    
-    print(f"🔄 Setting PayPal IPN notify URL to: {notify_url}")
-    
     # Setup PayPal parameters
     paypal_params = {
         'cmd': '_xclick',
@@ -87,7 +85,6 @@ async def create_paypal_payment_link(
         'currency_code': package_data['currency'],
         'return': success_url,
         'cancel_return': cancel_url,
-        'notify_url': notify_url,
         'custom': json.dumps({
             'user_id': user_id,
             'package_id': package_id,
@@ -95,7 +92,9 @@ async def create_paypal_payment_link(
             'session_id': session_id
         }),
         'no_shipping': '1',
-        'no_note': '1'
+        'no_note': '1',
+        # Add IPN notification URL to receive POST notifications
+        'notify_url': f"{BACKEND_URL}/api/payment/paypal-success"
     }
     
     # Build the URL

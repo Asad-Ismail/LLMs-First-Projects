@@ -533,14 +533,14 @@ async def webhook(
 
 
 @app.get("/api/payment/paypal-success")
-async def paypal_success_get(
+async def paypal_success(
     package_id: str = Query(..., description="The package ID from the PayPal return URL"),
     user_id: str = Query(..., description="The user ID from the PayPal return URL"),
     credits: int = Query(..., description="The number of credits from the PayPal return URL"),
     success: str = Query("true", description="Success indicator")
 ):
     """
-    Handle PayPal success redirect and process the payment via GET method.
+    Handle PayPal success redirect and process the payment.
     
     This endpoint is called when a user is redirected back from PayPal after a successful payment.
     """
@@ -564,7 +564,7 @@ async def paypal_success_get(
         return {"status": "success", "redirect": redirect_url, "details": result}
     
     except Exception as e:
-        print(f"❌ Error processing PayPal success (GET): {e}")
+        print(f"❌ Error processing PayPal success: {e}")
         import traceback
         traceback.print_exc()
         return {"status": "error", "message": str(e)}
@@ -575,46 +575,49 @@ async def paypal_success_post(
     request: Request
 ):
     """
-    Handle PayPal success POST callback.
-    
-    This endpoint is called when PayPal sends a POST notification after a successful payment.
+    Handle PayPal IPN (Instant Payment Notification) via POST.
+    This endpoint receives PayPal's POST callbacks after payment.
     """
     try:
-        # Get data from POST request
-        form_data = await request.form()
-        print(f"🔔 Received PayPal POST success notification: {form_data}")
-        
-        # Extract PayPal data - handle both IPN and PDT formats
-        # First, try to get the 'custom' field which should contain our data
-        custom_data = form_data.get('custom', '')
-        
+        # Get the form data or JSON from the request
         try:
-            # Parse the custom JSON data if available
-            if custom_data:
-                custom_json = json.loads(custom_data)
-                user_id = custom_json.get('user_id')
-                package_id = custom_json.get('package_id')
-                credits = int(custom_json.get('credits', 0))
-                session_id = custom_json.get('session_id')
-            else:
-                # Try to get data from other fields
-                user_id = form_data.get('user_id')
-                package_id = form_data.get('package_id')
-                credits = int(form_data.get('credits', 0))
-                session_id = form_data.get('txn_id') or str(uuid.uuid4())
-        except Exception as e:
-            print(f"⚠️ Error parsing PayPal custom data: {e}, using fallback extraction")
-            # Fallback to direct field extraction
-            user_id = form_data.get('user_id')
-            package_id = form_data.get('package_id')
-            credits = int(form_data.get('credits', 5))  # Default to 5 if not found
-            session_id = form_data.get('txn_id') or str(uuid.uuid4())
-        
-        if not user_id or not credits:
-            print("❌ Missing required fields in PayPal POST data")
-            return {"status": "error", "message": "Missing required fields"}
+            form_data = await request.form()
+            # Try to extract data from form fields
+            data = dict(form_data)
+        except:
+            # If not form data, try JSON
+            body = await request.json()
+            data = body
             
-        print(f"🔄 Processing PayPal POST notification for user {user_id}, {credits} credits")
+        print(f"🔔 Received PayPal POST callback with data: {data}")
+        
+        # Try to extract custom data which may contain our parameters
+        custom_data = {}
+        if 'custom' in data:
+            try:
+                custom_data = json.loads(data['custom'])
+                print(f"📦 Extracted custom data: {custom_data}")
+            except:
+                print("⚠️ Could not parse custom data as JSON")
+        
+        # Combine data sources to get required parameters
+        user_id = data.get('user_id') or custom_data.get('user_id')
+        package_id = data.get('package_id') or custom_data.get('package_id')
+        credits = data.get('credits') or custom_data.get('credits')
+        session_id = data.get('session_id') or custom_data.get('session_id') or str(uuid.uuid4())
+        
+        if not all([user_id, package_id, credits]):
+            print("⚠️ Missing required parameters in PayPal callback")
+            # Log the full data for debugging
+            print(f"📝 Full data received: {data}")
+            return {"status": "error", "message": "Missing required parameters"}
+        
+        # Convert credits to integer
+        try:
+            credits = int(credits)
+        except:
+            print(f"⚠️ Invalid credits value: {credits}")
+            credits = 0
         
         # Process the payment
         payment_data = {
@@ -624,13 +627,12 @@ async def paypal_success_post(
             "session_id": session_id
         }
         
+        print(f"💳 Processing PayPal payment with data: {payment_data}")
         result = await process_paypal_successful_payment(payment_data)
-        print(f"✅ PayPal POST payment processed: {result}")
-        
-        return {"status": "success", "details": result}
+        return result
     
     except Exception as e:
-        print(f"❌ Error processing PayPal success (POST): {e}")
+        print(f"❌ Error processing PayPal POST callback: {e}")
         import traceback
         traceback.print_exc()
         return {"status": "error", "message": str(e)}
