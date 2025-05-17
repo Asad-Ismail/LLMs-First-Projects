@@ -13,7 +13,8 @@ load_dotenv()
 # Set Stripe API key from environment
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+# Fix trailing slash in FRONTEND_URL to prevent double slash in URLs
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip('/')
 
 # Helper function to get appropriate Supabase client
 def get_db_client():
@@ -210,6 +211,12 @@ async def process_successful_payment(session: Dict[str, Any]) -> None:
         
         session_id = session.get('id', 'unknown')
         print(f"⭐ Processing payment for session: {session_id}")
+        
+        # IMPORTANT: Check if this payment has already been processed to prevent duplicates
+        existing_payment = db.table('user_payment_transactions').select('id').eq('provider_transaction_id', session_id).execute()
+        if existing_payment.data and len(existing_payment.data) > 0:
+            print(f"⚠️ Payment with session ID {session_id} already processed. Skipping to prevent duplicates.")
+            return
         
         # Extract metadata
         metadata = session.get('metadata', {})

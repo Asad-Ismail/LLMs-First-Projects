@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: flights-reliability-frontend
+    env: node
+    buildCommand: cd frontend && npm install && npm run build:deploy
+    startCommand: cd frontend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production 

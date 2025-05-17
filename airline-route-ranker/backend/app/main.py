@@ -10,11 +10,15 @@ from dotenv import load_dotenv
 import glob
 from pathlib import Path as PathLib
 from pydantic import BaseModel, EmailStr, Field
+import uuid
+import json
 
 from .controller import FlightAnalysisSystem, extract_flight_numbers_for_route
 from .utils.email import send_contact_email
 from .utils.supabase_client import supabase, supabase_admin
 from .utils.payments import create_payment_link, handle_webhook_event, get_db_client
+from .utils.paypal import create_paypal_payment_link, process_paypal_successful_payment
+from .utils.config import ACTIVE_PAYMENT_PROVIDER, FRONTEND_URL
 
 # Load environment variables
 load_dotenv()
@@ -116,7 +120,7 @@ async def verify_api_key(request: Request, call_next):
         )
     
     # Skip authentication for health endpoint and webhook endpoint
-    if request.url.path == "/api/health" or request.url.path == "/api/payment/webhook":
+    if request.url.path == "/api/health" or request.url.path == "/api/payment/webhook" or request.url.path == "/api/payment/paypal-success":
         response = await call_next(request)
         # Add CORS headers to the response
         for key, value in cors_headers.items():
@@ -435,6 +439,7 @@ class PaymentRequest(BaseModel):
     user_id: str = Field(..., description="The ID of the user making the purchase")
     success_url: Optional[str] = Field(None, description="URL to redirect after successful payment")
     cancel_url: Optional[str] = Field(None, description="URL to redirect after cancelled payment")
+    provider: Optional[str] = Field(None, description="Payment provider (stripe or paypal)")
 
 
 @app.post("/api/payment/create-link")
@@ -443,7 +448,7 @@ async def create_payment(
     x_api_key: str = Header(None, alias="X-API-Key")
 ):
     """
-    Create a Stripe payment link for purchasing credits.
+    Create a payment link for purchasing credits.
     
     Args:
         payment: Payment request with package and user details
@@ -456,13 +461,25 @@ async def create_payment(
         if not x_api_key or x_api_key != API_KEY:
             raise HTTPException(status_code=401, detail="Invalid or missing API key")
         
-        # Create payment link
-        payment_data = await create_payment_link(
-            package_id=payment.package_id,
-            user_id=payment.user_id,
-            success_url=payment.success_url,
-            cancel_url=payment.cancel_url
-        )
+        # Determine payment provider
+        provider = payment.provider or ACTIVE_PAYMENT_PROVIDER
+        
+        if provider == 'stripe':
+            # Create Stripe payment link
+            payment_data = await create_payment_link(
+                package_id=payment.package_id,
+                user_id=payment.user_id,
+                success_url=payment.success_url,
+                cancel_url=payment.cancel_url
+            )
+        else:
+            # Default to PayPal
+            payment_data = await create_paypal_payment_link(
+                package_id=payment.package_id,
+                user_id=payment.user_id,
+                success_url=payment.success_url,
+                cancel_url=payment.cancel_url
+            )
         
         return payment_data
     
@@ -513,6 +530,108 @@ async def webhook(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Webhook processing error")
+
+
+@app.get("/api/payment/paypal-success")
+async def paypal_success(
+    package_id: str = Query(..., description="The package ID from the PayPal return URL"),
+    user_id: str = Query(..., description="The user ID from the PayPal return URL"),
+    credits: int = Query(..., description="The number of credits from the PayPal return URL"),
+    success: str = Query("true", description="Success indicator")
+):
+    """
+    Handle PayPal success redirect and process the payment.
+    
+    This endpoint is called when a user is redirected back from PayPal after a successful payment.
+    Note: To avoid double processing, we now let the IPN (POST) handle the actual payment processing.
+    """
+    try:
+        # Only proceed if success is true
+        if success.lower() != "true":
+            return {"status": "error", "message": "Payment not successful"}
+        
+        print(f"✅ PayPal success redirect received for user {user_id}, package {package_id}, credits {credits}")
+        print(f"ℹ️ Redirecting to frontend - actual payment processing will be handled by IPN webhook")
+        
+        # Simply redirect to the frontend with success parameters
+        # The actual payment processing will happen via the PayPal IPN (POST) notification
+        redirect_url = f"{FRONTEND_URL}/profile/credits?success=true&credits={credits}"
+        return {"status": "redirect", "redirect": redirect_url}
+    
+    except Exception as e:
+        print(f"❌ Error in PayPal success redirect: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+
+
+@app.post("/api/payment/paypal-success")
+async def paypal_success_post(
+    request: Request
+):
+    """
+    Handle PayPal IPN (Instant Payment Notification) via POST.
+    This endpoint receives PayPal's POST callbacks after payment.
+    """
+    try:
+        # Get the form data or JSON from the request
+        try:
+            form_data = await request.form()
+            # Try to extract data from form fields
+            data = dict(form_data)
+        except:
+            # If not form data, try JSON
+            body = await request.json()
+            data = body
+            
+        print(f"🔔 Received PayPal POST callback with data: {data}")
+        
+        # Try to extract custom data which may contain our parameters
+        custom_data = {}
+        if 'custom' in data:
+            try:
+                custom_data = json.loads(data['custom'])
+                print(f"📦 Extracted custom data: {custom_data}")
+            except:
+                print("⚠️ Could not parse custom data as JSON")
+        
+        # Combine data sources to get required parameters
+        user_id = data.get('user_id') or custom_data.get('user_id')
+        package_id = data.get('package_id') or custom_data.get('package_id')
+        credits = data.get('credits') or custom_data.get('credits')
+        session_id = data.get('session_id') or custom_data.get('session_id') or str(uuid.uuid4())
+        
+        if not all([user_id, package_id, credits]):
+            print("⚠️ Missing required parameters in PayPal callback")
+            # Log the full data for debugging
+            print(f"📝 Full data received: {data}")
+            return {"status": "error", "message": "Missing required parameters"}
+        
+        # Convert credits to integer
+        try:
+            credits = int(credits)
+        except:
+            print(f"⚠️ Invalid credits value: {credits}")
+            credits = 0
+        
+        # Process the payment
+        payment_data = {
+            "user_id": user_id,
+            "package_id": package_id,
+            "credits": credits,
+            "session_id": session_id
+        }
+        
+        print(f"💳 Processing PayPal payment with data: {payment_data}")
+        result = await process_paypal_successful_payment(payment_data)
+        return result
+    
+    except Exception as e:
+        print(f"❌ Error processing PayPal POST callback: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+
 
 @app.get("/api/payment/confirm-success")
 async def confirm_success(
