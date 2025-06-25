@@ -41,7 +41,7 @@ It is free so give it a try!
 We are going to minimize intial cost 
 
 
-## Decelopment
+## Development
 
   Frontend:
 
