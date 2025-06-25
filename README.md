@@ -34,3 +34,37 @@ An MVP of "Route Specific "flights route ranker using real airlines data [websit
 </p>
 
 It is free so give it a try!
+
+
+### What works for 99.99% projects and also able to Scale if Required
+
+We are going to minimize intial cost 
+
+
+## Decelopment
+
+  Frontend:
+
+  Framework: Next.js 15 (App Router)
+  Language: TypeScript
+  Styling: Tailwind CSS + Shadcn/ui
+  State: Zustand (simple) or TanStack Query (complex)
+  Build: Turbopack (Next.js native)
+
+ Backend:
+
+   FastAPI backend or when scaling BFF like Hono/Bun + FastAPI
+
+
+## Deployment
+  Frontend: Vercel (FREE)
+  - Global CDN
+  - Automatic HTTPS
+  - Git deployments
+  - Perfect Next.js integration
+
+  Backend: Railway ($5/month)
+  - FastAPI + PostgreSQL
+  - Never-pause database
+  - Easy scaling
+  - Built-in monitoring
